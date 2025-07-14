@@ -1,0 +1,267 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[utf8]{inputenc} 
+\usepackage{fullpage}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[hidelinks]{hyperref,xcolor}
+\renewcommand\UrlFont{\color{blue}\rmfamily}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{library.bib} %Imports bibliography file
+
+% Title of your project
+\title{Behavior approximation using fuzzy-genetic systems}
+
+% Name of deliverable
+\newcommand{\deliverableName}{Master's Thesis}
+
+% Group names(s)
+\author{Mark Safronov}
+
+% Group number
+\newcommand{\groupNumber}{A_2024-25_105200}
+
+% Any comments for us
+\newcommand{\comments}{Comments for teachers of the course}
+
+% Web address for the project (if any)
+\newcommand{\homepage}{\url{https://campusvirtual.urv.cat/course/view.php?id=105200}}
+
+% Date for title page, default is today and 
+\date{\today}
+
+
+\makeatletter{}
+
+\begin{document}
+	
+	\input{./title.tex}
+	
+	\tableofcontents
+	
+	\section{Introduction}
+	
+	In this section we'll set up the context of the problem to be solved and explain an important comparison we make in this work with the reinforcement learning.
+	Readers which don't require such an introduction can proceed directly to the~\ref{problem-statement}.
+	
+	\subsection{Contextualization}
+
+	In 1993 Studio Gainax in Japan released a computer game called \textit{Princess Maker 2}.
+	The game belongs to a so-called ``life simulation'' genre, the player takes the role of a guardian of a young girl, making decisions that affect her upbringing and future.
+	\textit{Princess Maker 2} is a narrative-heavy game, featuring a very complex storyline which depends on the choices the player makes, but under the plot and all the other art elements which normally constitute a computer game, lies very formal and routine gameplay loop:
+	
+	\begin{enumerate}
+		\item The player estimates the current state of the girl;
+		\item The player chooses the day-to-day schedule for the girl;
+		\item The girl ``performs'' the scheduled actions;
+		\item The game changes the state of the girl according to the actions performed.
+	\end{enumerate}
+	
+	Story-wise, the game ends after ten years of upbringing the girl.
+	At this point the game evaluates the state reached by the girl and tells the final ``fate'' she got as the result.
+	The title of the game being the hint of the ultimate goal.
+		
+	This is essentially a stateful agent planning its behavior according to the predefined goal to be reached.
+	Thus, the question arises: can we solve it?
+
+	\subsection{Comparison with Reinforcement learning}
+
+	Reinforcement Learning \cite{sutton2018reinforcement} is used in this work as a benchmark.
+	The choice of this optimization method is deceptively obvious, because at a glance, the problem looks like a perfect match for it.
+	We have an agent, which has a state, and this agent can perform actions which change the state.
+	Ultimately we want the agent to reach the goal state which will give it the best reward.
+	
+	The issue with applying the RL methods to this problem is the issue of scale.
+
+	The origin problem of solving Princess Maker 2, described in the previous subsection,  assumes 25 actions over a state space of 50 numeric characteristics each one having values between 0 and 500.
+	Just enumerating the possible states of the agent caused by these actions in the state space of such a size is an intractable problem, which we will rigorously show in~\ref{methodology}.
+	
+	Just the rewards table for this has a size of $25 \times 500^{50}$, which is already practically intractable.
+	Moreover, the length of the process is 1000 steps.
+
+	\section{Problem statement}\label{problem-statement}
+
+	We will define ``behavior'' as a classical Reinforcement Learning\cite{sutton2018reinforcement} problem.
+
+	Assuming we have a character described as a set of numeric characteristics
+	
+	\begin{equation}
+		\mathbf{x} \in \mathbb{Z}^n
+	\end{equation}
+	
+	we have a set of possible actions
+	
+	\begin{equation}
+		A = \{a_1, a_2,\ldots, a_m\}
+	\end{equation}
+	
+	which collectively form a transfer function
+	
+	\begin{equation}
+		f(\mathbf{x}, a) = \mathbf{x}'
+	\end{equation}
+
+	Now, we have a goal state 
+	\begin{equation}
+		\mathbf{x}^* \in \mathbb{Z}^n
+	\end{equation} 
+	
+	and a planning horizon
+	
+	\begin{equation}
+		T \in \mathbb{Z}
+	\end{equation}
+
+	We want to get an ordered actions sequence of length $T$ which will lead $\mathbf{x}$ to $\mathbf{x}^*$:
+	
+	\begin{eqnarray}
+		\mathbf{a} \in A^T, x_o = \mathbf{x}: \bigodot_{i=1}^{T} f(x, a_i) = \mathbf{x}^*
+	\end{eqnarray}
+	
+	where $\bigodot$ is a fold operator.
+	The transfer function $f$ is assumed to be completely determined, and the whole process being non-stochastic.
+		
+	Normally, there is a number of classical approaches to this problem, including dynamic programming, reinforcement learning and state space searches using graph theory.
+	However, in this work we'll focus specifically on the cases which lead to combinatorial explosion for classical solutions, that is, when we have sufficiently large amount of characteristics, actions to choose from and most importantly, very large planning horizon:
+	
+	\begin{eqnarray}
+		n > 50 \\
+		m > 20 \\
+		T > 2000
+	\end{eqnarray}
+	
+	As an additional restriction, we'll state that it's not enough to reach the desired state $\mathbf{x}^*$ sometime before $T$, instead, it is a must that we perform $T$ actions and only then evaluate the final state $\mathbf{x}'$ of the character.
+	Having this distinction is important, as actions result in \textit{arbitrary} changes in the character state, both positive and negative.
+	So, it is possible, but unacceptable, to reach the desired state $\mathbf{x}^*$ before $T$ and after that perform a number of actions which will lead to a final state $\mathbf{x}'$ which is not equal to $\mathbf{x}^*$.
+
+
+We assume a fixed-length trajectory of $𝑇$ actions, each of which transforms the state of the system according to a known deterministic transfer function. While the agent cannot avoid taking actions — and hence cannot avoid changes to the system — it is allowed to evaluate its progress toward the goal at every intermediate state. In this sense, the problem is not a pure planning task but an episode-based control problem with delayed evaluation.
+
+We define the reward function as a continuous measure of proximity to the goal state, such as an $\ell_2$-norm to a target vector or distance to a target region described by bounded inequalities. While the final reward is evaluated only after $𝑇$ steps, the intermediate distances can serve as feedback for heuristic guidance or surrogate loss during optimization.
+
+Importantly, the system does not support "no-op" actions or any idle transitions. Each step must result in a meaningful state transformation, reflecting the irreversible nature of time and action in real-world analogs such as life planning.
+
+	With these restrictions in place, a need in an heuristic arises to perform efficient search in the state space, as its size becomes unrealistically large.
+	
+	\subsection{Proposed approach}
+
+Classical reinforcement learning methods become intractable in this domain due to the high dimensionality of the state space, large action set, and long planning horizon. Moreover, the inability to halt or take neutral actions further exacerbates the combinatorial explosion of the trajectory space.
+
+To address this, we introduce a heuristic dimensionality reduction via the concept of inclinations — latent behavioral parameters — and model the behavior policy as a fuzzy controller which maps the current state and inclinations to a concrete action.
+
+This parametrization constrains the space of possible behaviors, making the optimization tractable. Instead of learning or searching over action sequences directly, we perform optimization in the significantly smaller space of inclinations, evaluating the final outcome after T steps. The resulting problem becomes an offline, black-box control task — suitable for evolutionary algorithms, rather than classical RL methods.
+
+
+
+
+
+	In this work we evaluate one possible approach which is defined as follows.
+	
+	Let's assume that we can segment the set of possible actions to clusters with the following particularities:
+	
+	\begin{enumerate}
+		\item actions in the same cluster lead to ``similar'' changes in the character state $\mathbf{x}$.
+		\item the cluster as a whole can be described symbolically
+	\end{enumerate}
+	
+	In this case we can synthesize a set of numeric characteristics which we'll call ``inclinations'':
+	
+	\begin{eqnarray}
+		\mathbf{I} \in \mathbb{Z}^q\\
+		q << n \label{q<<n}
+	\end{eqnarray}
+
+	From this, we can define a set of fuzzy rules\cite{ray2014softcomputing} mapping the inclinations to action choices:
+
+	\begin{enumerate}
+		\item if an inclination $I_i$ has a fuzzy value $V_I$,
+		\item then $P_a$, the priority of an action $a$, is a fuzzy set $V_A$.
+	\end{enumerate}
+	
+	After the defuzzification of all the inferred fuzzy values $P_a$ we select an action with the highest priority.
+	
+	The selection and design of fuzzy rules is a critical aspect of this approach.
+	In this thesis, the fuzzy rule base is constructed manually, leveraging domain knowledge to define the mapping from inclinations to action priorities.
+	Future research may investigate automated methods for generating fuzzy rules, such as clustering or machine learning techniques, to further improve scalability and reduce manual effort.
+
+	While it is theoretically possible to define fuzzy rules that map every possible inclination vector $\mathbf{I}$ or even every state $\mathbf{x}$ to action priorities, such exhaustive rule sets would quickly become infeasible due to combinatorial growth.
+	This reinforces the importance of dimensionality reduction and clustering in making the fuzzy-genetic approach tractable for high-dimensional planning problems.
+
+	The assumption which we explore among others in this work is the practical possibility to write a coherent set of fuzzy rules which will be clustered around the clusters of actions, and each inclination will tend to map to its own cluster of actions.
+	
+	Now, using such a fuzzy controller $\xi(I, \mathbf{x})$ we can construct the goal function:
+	
+	\begin{equation}
+		g(I, \mathbf{x}) = \bigodot_{i=1}^{T} f(x, \xi(I, x_i))
+	\end{equation}
+	
+	the above formula being subject to improvements in expressiveness,
+	the main point of which being the fuzzy controller $\xi(I, x_i)$ selecting the action to perform on the step $i$ according to the inclinations and (ideally) the current state $x_i$.
+	
+	For the $g$ parameter $\mathbf{x}$ is essentially a constant, and given (\ref{q<<n}),
+	we effectively performed dimensionality reduction on the original problem.
+	
+	We can find $\arg \max(g)$ now using an appropriate optimization method.
+	For this work, because of a strong biosocial analogies a genetic algorithm\cite{mitchell1999geneticalgorithms} was chosen,
+	with the vector of inclinations $\mathbf{I}$ as a chromosome.
+	
+	\subsection{Hypothesis}
+	The hypothesis explored in this work is that the combination of assumptions described above constructs an heuristic which allows solving the problem more efficiently than performing the reinforcement learning directly.
+	
+	\subsection{Objectives}
+	The objective of this thesis is to investigate whether fuzzy-genetic heuristics can effectively solve high-dimensional deterministic planning problems through dimensionality reduction and symbolic reasoning.
+	
+	In particular, we aim to:
+	\begin{enumerate}
+		\item Formalize the problem as an optimization task.
+		\item Implement a working solver.
+		\item Evaluate the performance of the solver on a set of test cases of increasing complexity.
+		\item Analyze the results to draw conclusions about the effectiveness of the approach.
+	\end{enumerate}
+
+	\section{Methodology}
+
+
+
+	\section{Implementation}
+
+	\section{Experiments and Results}
+
+	\subsection{Trivial case}
+
+	2 characteristics, 4 mutually exclusive actions, 3 steps.
+
+	This scenario represents a trivial case, with only $4^{3}$ possible action sequences—a total of 64.
+	The small state space allows for exhaustive enumeration and manual verification of results.
+	This case serves to validate the correctness of the implementation and the fuzzy controller, as the system's behavior can be easily traced and analyzed by hand.
+
+	\subsection{Base control case}
+    
+	4 characteristics, 12 actions, 100 steps.
+
+	This case is the base case, as it introduces enough complexity to test the proposed approach and at the same time compare it with classical approaches.
+
+	A decision tree of the size $12^{100}$ is already too large to be completely enumerated.
+
+	However, with 4 characteristics and 12 actions, the problem is still well within the range where Reinforcement Learning methods—especially those using function approximation—can be applied efficiently.
+	The planning horizon of 100 steps is long enough to be non-trivial, but does not pose significant challenges for standard RL algorithms.
+
+	\subsection{Origin case}
+
+	The Princess Maker 2 case is a problem with 50 numeric characteristics of a character and 25 actions to choose from, with a planning horizon of 2500 steps.
+
+	This case is an attempt to directly solve the original problem which started this work.
+	It will be used as a benchmark for the proposed solution on a real-world problem.
+
+	\section{Discussion}
+
+	\section{Conclusions and Future Work}
+
+	Despite the context of the problem being a computer game, the problem itself is a general one, and the proposed approach can be applied to any high-dimensional deterministic planning problem.
+	Which constitutes the core value of this work.
+
+	In the span of this work, only three distinct cases were explored, and the more thorough exploration of the parameter space is left for a dissertation-level research.
+
+	\printbibliography
+
+\end{document}
