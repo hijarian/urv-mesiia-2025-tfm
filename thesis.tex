@@ -42,7 +42,7 @@
 	\section{Introduction}
 	
 	In this section we'll set up the context of the problem to be solved and explain an important comparison we make in this work with the reinforcement learning.
-	Readers which don't require such an introduction can proceed directly to the~\ref{problem-statement}.
+	Readers which don't require such an introduction can proceed directly to the \ref{problem-statement}.
 	
 	\subsection{Contextualization}
 
@@ -74,14 +74,19 @@
 	The issue with applying the RL methods to this problem is the issue of scale.
 
 	The origin problem of solving Princess Maker 2, described in the previous subsection,  assumes 25 actions over a state space of 50 numeric characteristics each one having values between 0 and 500.
-	Just enumerating the possible states of the agent caused by these actions in the state space of such a size is an intractable problem, which we will rigorously show in~\ref{methodology}.
-	
+	Just enumerating the possible states of the agent caused by these actions in the state space of such a size is an intractable problem, which we will rigorously show in \ref{methodology}.
 	Just the rewards table for this has a size of $25 \times 500^{50}$, which is already practically intractable.
-	Moreover, the length of the process is 1000 steps.
+	
+	Moreover, the most important problem is the length of the process.
+	Following the base example of \textit{Princess Maker 2} gameplay, player makes 3 choices per virtual ``month'', and the game spans 10 ``years'', so the search space is a tree $3 \times 12 \times 10 = 360$ levels deep.
+	
+	
 
 	\section{Problem statement}\label{problem-statement}
 
-	We will define ``behavior'' as a classical Reinforcement Learning\cite{sutton2018reinforcement} problem.
+	Formally we have a choice of whether to treat this as a planning problem or a control problem.
+
+	We will define ``behavior'' as the control problem.
 
 	Assuming we have a character described as a set of numeric characteristics
 	
@@ -127,7 +132,7 @@
 	\begin{eqnarray}
 		n > 50 \\
 		m > 20 \\
-		T > 2000
+		T > 300
 	\end{eqnarray}
 	
 	As an additional restriction, we'll state that it's not enough to reach the desired state $\mathbf{x}^*$ sometime before $T$, instead, it is a must that we perform $T$ actions and only then evaluate the final state $\mathbf{x}'$ of the character.
