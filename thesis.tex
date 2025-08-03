@@ -7,7 +7,8 @@
 \renewcommand\UrlFont{\color{blue}\rmfamily}
 
 \usepackage[backend=biber]{biblatex}
-\addbibresource{library.bib} %Imports bibliography file
+% Custom bibliography file
+\addbibresource{library.bib} 
 
 % Title of your project
 \title{Behavior approximation using fuzzy-genetic systems}
@@ -41,10 +42,10 @@
 	
 	\section{Introduction}
 	
-	In this section we'll set up the context of the problem to be solved and explain an important comparison we make in this work with the reinforcement learning.
+	In this section we'll set up the context of a problem to be solved and explain an important comparison we make in this work with the reinforcement learning.
 	Readers which don't require such an introduction can proceed directly to the \ref{problem-statement}.
 	
-	\subsection{Contextualization}
+	\subsection{A game solver as a scheduling problem}
 
 	In 1993 Studio Gainax in Japan released a computer game called \textit{Princess Maker 2}.
 	The game belongs to a so-called ``life simulation'' genre, the player takes the role of a guardian of a young girl, making decisions that affect her upbringing and future.
@@ -80,9 +81,9 @@
 	Moreover, the most important problem is the length of the process.
 	Following the base example of \textit{Princess Maker 2} gameplay, player makes 3 choices per virtual ``month'', and the game spans 10 ``years'', so the search space is a tree $3 \times 12 \times 10 = 360$ levels deep.
 	
-	
+	\section{Formal problem statement}\label{problem-statement}
 
-	\section{Problem statement}\label{problem-statement}
+	\subsection{Actor behavior as a control problem}
 
 	Formally we have a choice of whether to treat this as a planning problem or a control problem.
 
@@ -106,6 +107,7 @@
 		f(\mathbf{x}, a) = \mathbf{x}'
 	\end{equation}
 
+% FIXME: not the goal state but goal requirements, inequalities
 	Now, we have a goal state 
 	\begin{equation}
 		\mathbf{x}^* \in \mathbb{Z}^n
@@ -117,15 +119,19 @@
 		T \in \mathbb{Z}
 	\end{equation}
 
-	We want to get an ordered actions sequence of length $T$ which will lead $\mathbf{x}$ to $\mathbf{x}^*$:
+% which will satisfy requirements
+	We want to get an ordered actions sequence of length $T$ which will lead $\mathbf{x}$ to $\mathbf{x}^*$ satisfying the goal conditions $\mathbf{G}$:
 	
 	\begin{eqnarray}
 		\mathbf{a} \in A^T, x_o = \mathbf{x}: \bigodot_{i=1}^{T} f(x, a_i) = \mathbf{x}^*
 	\end{eqnarray}
 	
 	where $\bigodot$ is a fold operator.
-	The transfer function $f$ is assumed to be completely determined, and the whole process being non-stochastic.
+	
+	The transfer function $f$ is assumed to be completely determined, and the whole process being non-stochastic. This is a significant restriction which cannot be lifted for the proposed solution to work.
 		
+	\subsection{Dimensionality explosion stemming from the original context}
+	
 	Normally, there is a number of classical approaches to this problem, including dynamic programming, reinforcement learning and state space searches using graph theory.
 	However, in this work we'll focus specifically on the cases which lead to combinatorial explosion for classical solutions, that is, when we have sufficiently large amount of characteristics, actions to choose from and most importantly, very large planning horizon:
 	
@@ -148,7 +154,7 @@ Importantly, the system does not support "no-op" actions or any idle transitions
 
 	With these restrictions in place, a need in an heuristic arises to perform efficient search in the state space, as its size becomes unrealistically large.
 	
-	\subsection{Proposed approach}
+	\section{Proposed solution approach}
 
 Classical reinforcement learning methods become intractable in this domain due to the high dimensionality of the state space, large action set, and long planning horizon. Moreover, the inability to halt or take neutral actions further exacerbates the combinatorial explosion of the trajectory space.
 
@@ -157,8 +163,7 @@ To address this, we introduce a heuristic dimensionality reduction via the conce
 This parametrization constrains the space of possible behaviors, making the optimization tractable. Instead of learning or searching over action sequences directly, we perform optimization in the significantly smaller space of inclinations, evaluating the final outcome after T steps. The resulting problem becomes an offline, black-box control task — suitable for evolutionary algorithms, rather than classical RL methods.
 
 
-
-
+	\subsection{Using domain knowledge to reduce dimensionality}
 
 	In this work we evaluate one possible approach which is defined as follows.
 	
@@ -226,12 +231,51 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	\section{Methodology}
 
+	\subsection{Encoding domain knowledge of actions as a fuzzy controller}
 
+	The major benefit and the core reason for the fuzzy controller is the ability to encode the domain knowledge in a limited set of rules which will be formally processed.
+	
+	Compared to, for example, some of the reinforcement learning methods, we don't need to specify the full table of rewards for every possible action-state combination.
+	It is enough to specify one rule for every available action and the controller will already become fully functional.
+	With some configuration of rules it's possible to write even less of them.
+	
+	This allows to simplify the implementation of the solver, because one of the main weaknesses of the proposed solution is writing the fuzzy rules by hand.
+	
+	\subsection{Control feedback loop as a fitness function}\label{fitness}
+
+	A single trajectory in the action space is explored using the following process.
+	
+	\begin{enumerate}
+		\item We start with the initial state $\mathbf{x}_0$ and the given set of inclinations $\mathbf{I}^k$
+		\item\label{loop:evaluate} We evaluate both $\mathbf{x}_0$ and $\mathbf{I}^k$ with the preconfigured fuzzy controller
+		\item The defuzzified output of the controller is the set of priorities for all the  actions. We pick the action with the highest priority. Tiebreaker is the position of the action in the list.
+		\item Action is executed and if we haven't made $T$ actions yet we return to the step \ref{loop:evaluate}
+		\item After $T$ executed actions we apply the goal conditions predicate $\Phi(\mathbf{x}*)$ and calculate the fitness based on that.
+	\end{enumerate}
+
+	\subsection{Global optimization using an evolutionary algorithm}
+
+	Strong biosocial analogies and the configuration of the control loop from~\ref{fitness} suggest us to use the evolutionary algorithms for optimization.
+	This is what would be used in this work.
+	However, any algorithm which is able to use the concept of fitness function would be applicable here.
+	
+	The choice of the implementation for the genetic algorithm guided this section.
+	The library Pagmo \cite{Biscani2020} includes a lot of already implemented different evolutionary algorithms apart from the simple genetic algorithm so it enables us easier exploration of possibilities in optimizing the full solver.
 
 	\section{Implementation}
+	
+	The technical implementation of the method is performed in C++~\cite{ppp3} using the libraries FuzzyLite~\cite{fl::fuzzylite} and Pagmo~\cite{Biscani2020}
 
+	\subsection{Choice of a C++ language as foundation}
+	
+	\subsection{Fuzzylite library for the fuzzy controller implementation}
+	
+	\subsection{Pagmo library for evolutionary computations}
+	
 	\section{Experiments and Results}
 
+	In the scope of this work we'll use the original Princess Maker 2 problem but segmented in four different problems of increasing scale.
+	
 	\subsection{Trivial case}
 
 	2 characteristics, 4 mutually exclusive actions, 3 steps.
@@ -253,13 +297,15 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	\subsection{Origin case}
 
-	The Princess Maker 2 case is a problem with 50 numeric characteristics of a character and 25 actions to choose from, with a planning horizon of 2500 steps.
+	The complete Princess Maker 2 case is a problem with 50 numeric characteristics of a character and 25 actions to choose from, with a planning horizon of 360 steps.
 
 	This case is an attempt to directly solve the original problem which started this work.
 	It will be used as a benchmark for the proposed solution on a real-world problem.
 
 	\section{Discussion}
 
+	(TBD)
+	
 	\section{Conclusions and Future Work}
 
 	Despite the context of the problem being a computer game, the problem itself is a general one, and the proposed approach can be applied to any high-dimensional deterministic planning problem.
