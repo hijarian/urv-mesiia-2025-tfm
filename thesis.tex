@@ -107,26 +107,37 @@
 		f(\mathbf{x}, a) = \mathbf{x}'
 	\end{equation}
 
-% FIXME: not the goal state but goal requirements, inequalities
-	Now, we have a goal state 
+	To describe the desired outcome, we first declare a fitness function mapping the state to a numerical value:
+	
 	\begin{equation}
-		\mathbf{x}^* \in \mathbb{Z}^n
+		\Phi : \mathbf{x}' \rightarrow \mathbb{R}
 	\end{equation} 
+	
+	a goal fitness value 
+	
+	\begin{equation}
+		\mathbf{G} \in \mathbb{R}
+	\end{equation}
 	
 	and a planning horizon
 	
 	\begin{equation}
 		T \in \mathbb{Z}
 	\end{equation}
-
-% which will satisfy requirements
-	We want to get an ordered actions sequence of length $T$ which will lead $\mathbf{x}$ to $\mathbf{x}^*$ satisfying the goal conditions $\mathbf{G}$:
 	
-	\begin{eqnarray}
+	We want to get an ordered actions sequence of length $T$ which will lead $\mathbf{x}$ to some $\mathbf{x}^*$:
+	
+	\begin{eqnarray}\label{definitions:fold}
 		\mathbf{a} \in A^T, x_o = \mathbf{x}: \bigodot_{i=1}^{T} f(x, a_i) = \mathbf{x}^*
 	\end{eqnarray}
 	
-	where $\bigodot$ is a fold operator.
+	(where $\bigodot$ is a fold operator)
+	
+	such as:
+	
+	\begin{equation}
+		\Phi(\mathbf{x}^*) > \mathbf{G}
+	\end{equation}
 	
 	The transfer function $f$ is assumed to be completely determined, and the whole process being non-stochastic. This is a significant restriction which cannot be lifted for the proposed solution to work.
 		
@@ -185,6 +196,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	\begin{enumerate}
 		\item if an inclination $I_i$ has a fuzzy value $V_I$,
+		\item and the current state $\mathbf{x}$ has fuzzy values $V^x_i$
 		\item then $P_a$, the priority of an action $a$, is a fuzzy set $V_A$.
 	\end{enumerate}
 	
@@ -201,16 +213,17 @@ This parametrization constrains the space of possible behaviors, making the opti
 	
 	Now, using such a fuzzy controller $\xi(I, \mathbf{x})$ we can construct the goal function:
 	
-	\begin{equation}
+	\begin{equation}\label{definitions:goal-function}
 		g(I, \mathbf{x}) = \bigodot_{i=1}^{T} f(x, \xi(I, x_i))
 	\end{equation}
 	
 	the above formula being subject to improvements in expressiveness,
 	the main point of which being the fuzzy controller $\xi(I, x_i)$ selecting the action to perform on the step $i$ according to the inclinations and (ideally) the current state $x_i$.
 	
-	For the $g$ parameter $\mathbf{x}$ is essentially a constant, and given (\ref{q<<n}),
-	we effectively performed dimensionality reduction on the original problem.
-	
+	The argument $\mathbf{x}$ is essentially a constant for both~(\ref{definitions:fold}) and~(\ref{definitions:goal-function}).
+	As that the transfer function $f$ is non-stochastic, $\mathbf{I}$ uniquely maps to the actions sequence $\mathbf{a}$.
+	Thus, given (\ref{q<<n}), we effectively performed dimensionality reduction on the original problem.
+		
 	We can find $\arg \max(g)$ now using an appropriate optimization method.
 	For this work, because of a strong biosocial analogies a genetic algorithm\cite{mitchell1999geneticalgorithms} was chosen,
 	with the vector of inclinations $\mathbf{I}$ as a chromosome.
