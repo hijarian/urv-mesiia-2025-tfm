@@ -47,9 +47,9 @@
 	
 	\subsection{A game solver as a scheduling problem}
 
-	In 1993 Studio Gainax in Japan released a computer game called \textit{Princess Maker 2}.
+	In 1993 in Japan Studio Gainax released a computer game called \textit{Princess Maker 2}.
 	The game belongs to a so-called ``life simulation'' genre, the player takes the role of a guardian of a young girl, making decisions that affect her upbringing and future.
-	\textit{Princess Maker 2} is a narrative-heavy game, featuring a very complex storyline which depends on the choices the player makes, but under the plot and all the other art elements which normally constitute a computer game, lies very formal and routine gameplay loop:
+	\textit{Princess Maker 2} is a narrative-heavy game, with a diverse set of gameplay elements depending on player's choices, but under the plot and all the other art elements which normally constitute a computer game, lies very formal and routine core gameplay loop:
 	
 	\begin{enumerate}
 		\item The player estimates the current state of the girl;
@@ -60,12 +60,16 @@
 	
 	Story-wise, the game ends after ten years of upbringing the girl.
 	At this point the game evaluates the state reached by the girl and tells the final ``fate'' she got as the result.
-	The title of the game being the hint of the ultimate goal.
+	The title of the game being the hint of the ultimate goal, but depending on the final characteristics of the girl (and some special story-dependent flags we ignore in this work) game can end in more than twenty different endings.
 		
 	This is essentially a stateful agent planning its behavior according to the predefined goal to be reached.
-	Thus, the question arises: can we solve it?
+	Thus, the question arises: can we solve it? Given the desired ending, can we deduce the total ``schedule'', a full list of choices to make to get to this ending, automatically and in one go? This question lies in the core of this work.
 
-	\subsection{Comparison with Reinforcement learning}
+	\subsection{Existing methods assessment}
+
+	There are two approaches which are deceptively obvious choices to solve this problem, namely, automatic planning theory and reinforcement learning.
+	
+	First, we can apply the 
 
 	Reinforcement Learning \cite{sutton2018reinforcement} is used in this work as a benchmark.
 	The choice of this optimization method is deceptively obvious, because at a glance, the problem looks like a perfect match for it.
