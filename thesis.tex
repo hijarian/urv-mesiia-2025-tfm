@@ -42,7 +42,7 @@
 	
 	\section{Introduction}
 	
-	In this section we'll set up the context of a problem to be solved and explain an important comparison we make in this work with the reinforcement learning.
+	In this section we'll set up the context of a problem to be solved and briefly cover the most obvious approaches to its solution.
 	Readers which don't require such an introduction can proceed directly to the \ref{problem-statement}.
 	
 	\subsection{A game solver as a scheduling problem}
@@ -65,18 +65,26 @@
 	This is essentially a stateful agent planning its behavior according to the predefined goal to be reached.
 	Thus, the question arises: can we solve it? Given the desired ending, can we deduce the total ``schedule'', a full list of choices to make to get to this ending, automatically and in one go? This question lies in the core of this work.
 
-	\subsection{Existing methods assessment}
+	\subsection{Existing methods assessment}\label{introduction:assessment}
 
 	There are two approaches which are deceptively obvious choices to solve this problem, namely, automatic planning theory and reinforcement learning.
 	
-	First, we can apply the 
+	First, we can directly use one of the modern numeric solvers, for example, ENHSP~\cite{scala2020subgoaling}.
+	This is proven to work on small-scale problems: the code repository of the ENHSP-20 solver~\footnote{https://github.com/hstairs/enhsp/tree/enhsp-20} has benchmarks with essentially 40 numeric parameters and 10 action choices.
+	
+	But the very nature of the automatic planners, namely, the intent to search for the shortest schedule reaching the goal, contradicts the problem we want to solve.
+	The Princess Maker problem dictates delayed evaluation of the goal state, we must execute a set amount of actions, and stay at the goal state at that time.
+	More than that, as we define more rigorously in the section \ref{problem-statement}, there are no ``no-operation'' actions, we cannot ``do nothing'' to pad the actions sequence, and every action changes the state.
+	
+	So, while using the automatic planners almost perfectly matches our needs, this is not the goal of this work.
+	In addition to that, the problem of scale stays unexplored, namely, the specific Princess Maker problem is just an example of a large-scale planning problem which we want to explore in this work.
 
-	Reinforcement Learning \cite{sutton2018reinforcement} is used in this work as a benchmark.
+	Second, we can try applying the Reinforcement Learning~\cite{sutton2018reinforcement} to this problem.
 	The choice of this optimization method is deceptively obvious, because at a glance, the problem looks like a perfect match for it.
 	We have an agent, which has a state, and this agent can perform actions which change the state.
 	Ultimately we want the agent to reach the goal state which will give it the best reward.
 	
-	The issue with applying the RL methods to this problem is the issue of scale.
+	The issue of scale is the main obstacle in this case.
 
 	The origin problem of solving Princess Maker 2, described in the previous subsection,  assumes 25 actions over a state space of 50 numeric characteristics each one having values between 0 and 500.
 	Just enumerating the possible states of the agent caused by these actions in the state space of such a size is an intractable problem, which we will rigorously show in \ref{methodology}.
@@ -87,11 +95,10 @@
 	
 	\section{Formal problem statement}\label{problem-statement}
 
+	As discussed in~\ref{introduction:assessment}, formally we have a choice of whether to treat this as a planning problem or a control problem.
+	Despite Reinforcement learning not being fit for our cause, we will still approach our origin problem as a control problem.
+
 	\subsection{Actor behavior as a control problem}
-
-	Formally we have a choice of whether to treat this as a planning problem or a control problem.
-
-	We will define ``behavior'' as the control problem.
 
 	Assuming we have a character described as a set of numeric characteristics
 	
@@ -107,7 +114,7 @@
 	
 	which collectively form a transfer function
 	
-	\begin{equation}
+	\begin{equation}\label{definitions:transfer-function}
 		f(\mathbf{x}, a) = \mathbf{x}'
 	\end{equation}
 
@@ -144,28 +151,30 @@
 	\end{equation}
 	
 	The transfer function $f$ is assumed to be completely determined, and the whole process being non-stochastic. This is a significant restriction which cannot be lifted for the proposed solution to work.
-		
+
 	\subsection{Dimensionality explosion stemming from the original context}
+
+	We assume a fixed-length trajectory of $𝑇$ actions, each of which transforms the state of the system according to a known deterministic transfer function~(\ref{definitions:transfer-function}).
+
+	This means two restrictions:
 	
-	Normally, there is a number of classical approaches to this problem, including dynamic programming, reinforcement learning and state space searches using graph theory.
-	However, in this work we'll focus specifically on the cases which lead to combinatorial explosion for classical solutions, that is, when we have sufficiently large amount of characteristics, actions to choose from and most importantly, very large planning horizon:
+	\begin{enumerate}
+		\item No-operation actions are prohibited, each step must result in a meaningful state transformation, reflecting the irreversible nature of time.
+		\item Goal state must still be in effect at the step $T$.
+	\end{enumerate}
+
+	While the agent cannot avoid taking actions — and hence cannot avoid changes to the system — it is allowed to evaluate its progress toward the goal at every intermediate state.
+	In this sense, the problem is not a pure planning task but an episode-based control problem with delayed evaluation.
+	
+	In this work we'll focus specifically on the cases which lead to combinatorial explosion for classical solutions, that is, when we have sufficiently large amount of characteristics, actions to choose from and most importantly, very large planning horizon:
 	
 	\begin{eqnarray}
 		n > 50 \\
 		m > 20 \\
-		T > 300
+		T > 360
 	\end{eqnarray}
 	
-	As an additional restriction, we'll state that it's not enough to reach the desired state $\mathbf{x}^*$ sometime before $T$, instead, it is a must that we perform $T$ actions and only then evaluate the final state $\mathbf{x}'$ of the character.
-	Having this distinction is important, as actions result in \textit{arbitrary} changes in the character state, both positive and negative.
-	So, it is possible, but unacceptable, to reach the desired state $\mathbf{x}^*$ before $T$ and after that perform a number of actions which will lead to a final state $\mathbf{x}'$ which is not equal to $\mathbf{x}^*$.
-
-
-We assume a fixed-length trajectory of $𝑇$ actions, each of which transforms the state of the system according to a known deterministic transfer function. While the agent cannot avoid taking actions — and hence cannot avoid changes to the system — it is allowed to evaluate its progress toward the goal at every intermediate state. In this sense, the problem is not a pure planning task but an episode-based control problem with delayed evaluation.
-
-We define the reward function as a continuous measure of proximity to the goal state, such as an $\ell_2$-norm to a target vector or distance to a target region described by bounded inequalities. While the final reward is evaluated only after $𝑇$ steps, the intermediate distances can serve as feedback for heuristic guidance or surrogate loss during optimization.
-
-Importantly, the system does not support "no-op" actions or any idle transitions. Each step must result in a meaningful state transformation, reflecting the irreversible nature of time and action in real-world analogs such as life planning.
+	The origin \textit{Princess Maker} problem is the lower edge of the cases we are interested in.
 
 	With these restrictions in place, a need in an heuristic arises to perform efficient search in the state space, as its size becomes unrealistically large.
 	
@@ -225,7 +234,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 	the main point of which being the fuzzy controller $\xi(I, x_i)$ selecting the action to perform on the step $i$ according to the inclinations and (ideally) the current state $x_i$.
 	
 	The argument $\mathbf{x}$ is essentially a constant for both~(\ref{definitions:fold}) and~(\ref{definitions:goal-function}).
-	As that the transfer function $f$ is non-stochastic, $\mathbf{I}$ uniquely maps to the actions sequence $\mathbf{a}$.
+	As the transfer function $f$ is non-stochastic, $\mathbf{I}$ uniquely maps to the actions sequence $\mathbf{a}$.
 	Thus, given (\ref{q<<n}), we effectively performed dimensionality reduction on the original problem.
 		
 	We can find $\arg \max(g)$ now using an appropriate optimization method.
@@ -233,10 +242,11 @@ This parametrization constrains the space of possible behaviors, making the opti
 	with the vector of inclinations $\mathbf{I}$ as a chromosome.
 	
 	\subsection{Hypothesis}
-	The hypothesis explored in this work is that the combination of assumptions described above constructs an heuristic which allows solving the problem more efficiently than performing the reinforcement learning directly.
+	The hypothesis explored in this work is that the combination of assumptions described above constructs an heuristic which allows finding a locally optimal solution in a polynomial time.
 	
 	\subsection{Objectives}
-	The objective of this thesis is to investigate whether fuzzy-genetic heuristics can effectively solve high-dimensional deterministic planning problems through dimensionality reduction and symbolic reasoning.
+	The objective of this thesis is to investigate whether the stated hypothesis is true.
+	That is, whether a fuzzy-genetic heuristic can effectively solve high-dimensional deterministic planning problems through dimensionality reduction and symbolic reasoning.
 	
 	In particular, we aim to:
 	\begin{enumerate}
@@ -246,7 +256,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 		\item Analyze the results to draw conclusions about the effectiveness of the approach.
 	\end{enumerate}
 
-	\section{Methodology}
+	\section{Methodology}\label{methodology}
 
 	\subsection{Encoding domain knowledge of actions as a fuzzy controller}
 
