@@ -60,15 +60,17 @@
 	
 	Story-wise, the game ends after ten years of upbringing the girl.
 	At this point the game evaluates the state reached by the girl and tells the final ``fate'' she got as the result.
-	The title of the game being the hint of the ultimate goal, but depending on the final characteristics of the girl (and some special story-dependent flags we ignore in this work) game can end in more than twenty different endings.
+	The title of the game is the hint on the ultimate goal, but depending on the final characteristics of the girl (and some special story-dependent flags we ignore in this work) game can end in more than twenty different endings.
 		
 	This is essentially a stateful agent planning its behavior according to the predefined goal to be reached.
 	Thus, the question arises: can we solve it? Given the desired ending, can we deduce the total ``schedule'', a full list of choices to make to get to this ending, automatically and in one go? This question lies in the core of this work.
 
 	\subsection{Existing methods assessment}\label{introduction:assessment}
 
-	There are two approaches which are deceptively obvious choices to solve this problem, namely, automatic planning theory and reinforcement learning.
+  % TODO: references for both!
+	There are two approaches which are deceptively obvious choices to solve this problem, namely, automatic planning theory~\cite{automaticPlanning} and reinforcement learning~\cite{sutton2018reinforcement}.
 	
+  \subsubsection{Automatic planning theory}
 	First, we can directly use one of the modern numeric solvers, for example, ENHSP~\cite{scala2020subgoaling}.
 	This is proven to work on small-scale problems: the code repository of the ENHSP-20 solver~\footnote{https://github.com/hstairs/enhsp/tree/enhsp-20} has benchmarks with essentially 40 numeric parameters and 10 action choices.
 	
@@ -79,6 +81,7 @@
 	So, while using the automatic planners almost perfectly matches our needs, this is not the goal of this work.
 	In addition to that, the problem of scale stays unexplored, namely, the specific Princess Maker problem is just an example of a large-scale planning problem which we want to explore in this work.
 
+  \subsubsection{Reinforcement learning}
 	Second, we can try applying the Reinforcement Learning~\cite{sutton2018reinforcement} to this problem.
 	The choice of this optimization method is deceptively obvious, because at a glance, the problem looks like a perfect match for it.
 	We have an agent, which has a state, and this agent can perform actions which change the state.
@@ -184,12 +187,11 @@ Classical reinforcement learning methods become intractable in this domain due t
 
 To address this, we introduce a heuristic dimensionality reduction via the concept of inclinations — latent behavioral parameters — and model the behavior policy as a fuzzy controller which maps the current state and inclinations to a concrete action.
 
-This parametrization constrains the space of possible behaviors, making the optimization tractable. Instead of learning or searching over action sequences directly, we perform optimization in the significantly smaller space of inclinations, evaluating the final outcome after T steps. The resulting problem becomes an offline, black-box control task — suitable for evolutionary algorithms, rather than classical RL methods.
-
+This parametrization constrains the space of possible behaviors, making the optimization tractable. Instead of learning or searching over action sequences directly, we perform optimization in the significantly smaller space of inclinations, evaluating the final outcome after $T$ steps. The resulting problem becomes an offline, black-box control task — suitable for evolutionary algorithms, rather than classical RL methods.
 
 	\subsection{Using domain knowledge to reduce dimensionality}
 
-	In this work we evaluate one possible approach which is defined as follows.
+	In this work we evaluate an approach which is defined as follows.
 	
 	Let's assume that we can segment the set of possible actions to clusters with the following particularities:
 	
@@ -258,15 +260,63 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	\section{Methodology}\label{methodology}
 
+  In this section we will discuss the theory which this work is build upon, namely, fuzzy logic~\cite{ray2014softcomputing} and evolutionary algorithms~\cite{mitchell1999geneticalgorithms}.
+
 	\subsection{Encoding domain knowledge of actions as a fuzzy controller}
 
-	The major benefit and the core reason for the fuzzy controller is the ability to encode the domain knowledge in a limited set of rules which will be formally processed.
+  Normally the Fuzzy logic is being explained from the fuzzy set theory by L. Zadeh~\cite{zadehFSbase}, but for this particular work the most important part of the fuzzy logic is the fuzzy rules for the fuzzy controller so it's more beneficial to start with them.
+
+  In the scope of the FL it is possible to express the domain knowledge in the form of symbolic rules, with the general form as follows:
+
+  \begin{verbatim}
+    If (input variable A) has a (fuzzy value Fa) then (output variable B) has a (fuzzy value Fb)
+  \end{verbatim}
+
+  For example, for our particular problem and solution method:
+
+  \begin{verbatim}
+    If InclinationAggressiveness is High then DuelingClassesPriority is High
+  \end{verbatim}
+
+  This rules format depends on the concept of the Fuzzy Variable, which is a combination of four major parts:
+
+  \begin{enumerate}
+    \item Name
+    \item Range of ``strict'' values
+    \item ``strict'' value itself
+    \item Set of fuzzy sets describing the possible fuzzy values of this variable
+  \end{enumerate}
+
+  The concept of Fuzzy Variable, in turn, depends on the concept of a fuzzy value, which is a combination of two major parts:
+
+  \begin{enumerate}
+    \item Name
+    \item Membership function
+  \end{enumerate}
+
+  A fuzzy controller is an algorithm which performs three large steps:
+
+  \begin{enumerate}
+    \item Convert all the strict values of the input fuzzy variables into the fuzzy values
+    \item Evaluate all the fuzzy rules, obtaining the fuzzy values of the output fuzzy variables
+    \item Apply the special \textit{defuzzification} operation to the output fuzzy variables, obtaining their strict values.
+  \end{enumerate}
+
+  In our system, we're going to have the vector of inclinations and the current state of the specimen as input variables for the controller,
+  and have the priorities of actions as the output variables.
+  This will allow us to imitate the process of ``decision making'' of the specimen to choose the next action to perform.
+
+	\textbf{The major benefit and the core reason} for the fuzzy controller is the ability to encode the domain knowledge in a limited set of rules which will be formally processed.
 	
 	Compared to, for example, some of the reinforcement learning methods, we don't need to specify the full table of rewards for every possible action-state combination.
 	It is enough to specify one rule for every available action and the controller will already become fully functional.
 	With some configuration of rules it's possible to write even less of them.
 	
 	This allows to simplify the implementation of the solver, because one of the main weaknesses of the proposed solution is writing the fuzzy rules by hand.
+
+  \textbf{The second benefit} of using the fuzzy controller for decision making is that it can be applied without major changes to non-deterministic, stochastic environment,
+  for example, if the actions would be allowed to make randomized changes to the specimen's state, that is, if the transfer function would not be pure.
+  It opens up the possibilities to explore this topic further in the later works.
 	
 	\subsection{Control feedback loop as a fitness function}\label{fitness}
 
@@ -280,13 +330,46 @@ This parametrization constrains the space of possible behaviors, making the opti
 		\item After $T$ executed actions we apply the goal conditions predicate $\Phi(\mathbf{x}*)$ and calculate the fitness based on that.
 	\end{enumerate}
 
+  It is important to understand that the state of a specimen is a transient value, used only for calculations of the final fitness after $T$ iterations.
+  The solution we seek is fully encoded in the inclinations vector $\mathbf{I}$, which stays unchanged for the entirety of the control loop.
+
 	\subsection{Global optimization using an evolutionary algorithm}
 
-	Strong biosocial analogies and the configuration of the control loop from~\ref{fitness} suggest us to use the evolutionary algorithms for optimization.
+	Strong biosocial analogies and the configuration of the control loop from~\ref{fitness} suggest us to use the evolutionary algorithms~\cite{evolutionary} for optimization.
 	This is what would be used in this work.
-	However, any algorithm which is able to use the concept of fitness function would be applicable here.
-	
-	The choice of the implementation for the genetic algorithm guided this section.
+	However, in principle, any algorithm which is able to use the concept of a fitness function would be applicable here.
+
+  Evolutionary algorithms can be explained with an example of the so-called Simple Genetic Algorithm~\cite{pagmo:sga}.
+
+  SGA operates on the set of specimens, each one being a single option in the search space to explore.
+  A specimen is classically a list of characters, which is called literally a genome.
+  The whole set of specimens is called a population.
+
+  In our case, a specimen would be a list of inclination values.
+
+  Every specimen in a population is evaluated using the fitness function, producing a fitness value.
+
+  Then, a \textit{selection operator} is applied, choosing a subset of the population.
+  For example, our selection operator may be choosing the top 50\% of the population by their fitness value.
+
+  After the selection, we apply the \textit{crossover operator} to the pairs of selected specimens' genomes.
+  The classical crossover operator picks a single place inside both of the genomes and then swaps the resulting halves between them.
+  For example, a genome `aaaa000` and a genome `1111bbb` after the crossover at point 5 become `aaaabbb` and `1111000`.
+
+  After the crossover we apply the \textit{mutation operator} to all of the selected genomes.
+  Mutation changes with some low probability individual genes in the genomes at random.
+  For example, we can have a mutation operator which has 0.01 probability of flipping a gene in the genome from `a` to `b` and \textit{vice versa}.
+  Then, we have 0.002 probability of a specimen with a genome `aaabb` turning into `ababb`.
+
+  After the crossover and mutation, we finally apply the \textit{replacement} which forms the new population for the next generation and the next round of evolution.
+  For example, we can use a so-called $\left(\mu + \lambda\right)$-evolution strategy: calculate the fitness for all the new genomes and then pick $s$ ones with the best fitness from both the old genomes and new ones, where $s$ is the target population size.
+  The size of the population is being kept constant for the classical genetic algorithms, the role of the replacement operator is specifically to enforce that.
+
+  In the approach described in this work, the fitness function is the control loop described in the previous section~\ref{control-loop}.
+  The genome of the specimen is the vector of inclinations.
+	And due to the choice of the specific library for the implementation of the evolutionary algorithms we have a wide selection of them,
+  which means, we can explore different options starting from the Simple Genetic Algorithm and continuing with more complicated options.
+
 	The library Pagmo \cite{Biscani2020} includes a lot of already implemented different evolutionary algorithms apart from the simple genetic algorithm so it enables us easier exploration of possibilities in optimizing the full solver.
 
 	\section{Implementation}
