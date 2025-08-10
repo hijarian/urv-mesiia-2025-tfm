@@ -270,13 +270,15 @@ This parametrization constrains the space of possible behaviors, making the opti
   In the scope of the FL it is possible to express the domain knowledge in the form of symbolic rules, with the general form as follows:
 
   \begin{verbatim}
-    If (input variable A) has a (fuzzy value Fa) then (output variable B) has a (fuzzy value Fb)
+    If (input variable A) has a (fuzzy value Fa) 
+    	then (output variable B) has a (fuzzy value Fb)
   \end{verbatim}
 
   For example, for our particular problem and solution method:
 
   \begin{verbatim}
-    If InclinationAggressiveness is High then DuelingClassesPriority is High
+    If InclinationAggressiveness is High 
+    	then DuelingClassesPriority is High
   \end{verbatim}
 
   This rules format depends on the concept of the Fuzzy Variable, which is a combination of four major parts:
@@ -379,7 +381,23 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	\subsection{Choice of a C++ language as foundation}
 	
+	As the root problem of this work is the problem of scale, it has been decided that we trade comfort of experimentation for pure processing power.
+	
+	Contemporary C++, starting with the standard version 20, allows for a very high-level code as readable as a natural language. It also has enough libraries written for solving different scientific problems for us to not need to implement neither fuzzy controller nor the evolutionary algorithms by ourselves.
+	
+	In talking on choice of the language for the implementation we cannot avoid comparisons with Python, assumed leader and language of choice for scientific experiments.
+	As has been stated above, it has been conscious decision to trade the ability to make rapid changes in the code, especially the ability to run Jupyter notebooks, for the raw processing power.
+	This is because the C++20 and later is expressive enough to be as readable as Python sans some of the required syntax boilerplate, and in reality the most painful part of choosing C++ is building the program to be cross-platform, as Python programs are, and doing that with the code which uses third-party libraries is a nontrivial implementation problem.
+	
 	\subsection{Fuzzylite library for the fuzzy controller implementation}
+	
+	This work turned out to be more or less an assessment of usefulness of the \texttt{fuzzylite}~\cite{fl::fuzzylite} C++ library in addition to the main goal.
+	While being fully open sourced with a non-restrictive license terms, actually adding it to an existing C++ program is a task certainly not feasible for an arbitrary computer scientist not being the seasoned software engineer at the same time.
+	Which is a shame, as it offers a straightforward idiomatic API which allows expressing the algorithms in a readable format.
+	
+	\texttt{fuzzylite} also provides a domain-specific language for specifying the fuzzy controller, which allows us to describe this part of the algorithm in a language more expressive than the raw C++ function calls.
+	
+	
 	
 	\subsection{Pagmo library for evolutionary computations}
 	
@@ -415,12 +433,25 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	\section{Discussion}
 
-	(TBD)
+	Using the fuzzy controller came out more complicated than it could be seen from the theory alone.
+	While the target of the work was reducing the search state space, the amount of parameters in the fuzzy controller exploded the hyperparameters space instead, as by different configuration of the fuzzy rules and fuzzy variables we can change the behavior of the specimen.
+	
+	If we exclude the current state of the specimen from the fuzzy rules, we trivialize the trajectories, reducing them to repetition of the same action $T$ times.
+	While this does not simplify the optimization step, as it is assumed that though (\ref{q<<n}), $q$ is still large enough for the bruteforce enumeration to be intractable, it leaves us with action sequences intuitively unfit as solutions for any realistic nontrivial goal states.
+
+	If we setup the fuzzy action-prioritizing rules in such a way that they would indeed use the current state of the specimen, we do turn the problem into the control one with non-trivial solutions, but at the same time we end up having to specify not only at least one rule per each action priority, but also at least one rule per each \textit{term} per \textit{each input variable}, which starts competing with the complexity of the problem we are trying to solve by this method in the first place.
+	
+	In the discussion of reducing the dimensionality of the problem, one should not forget the actual issue which explodes the dimensionality of the problem.
+	While on the surface the method explored in this work is based on the inequality (\ref{q<<n}) and the amount of inclinations seems to be the target of discussions, the actual solution to the origin problem is a \textit{list of actions}, and the true reason for dimensionality explosion is the length $T$ of the list of actions to find and the amount of actions to be considered at each step.
 	
 	\section{Conclusions and Future Work}
 
+	First, let us make a conclusion tangential to the origin problem but related to the chosen theoretical toolset.
+	While the fuzzy controller can indeed be seen as a tool to formalize the decision making using the expert knowledge in the given domain, it is too complicated mechanism by itself to help reducing the complexity of the problem it's solving.
+	One should treat it not as a tool which helps make complicated problems simpler but which, hopefully, makes unsolvable ones solvable at all, as proper configuration of the fuzzy controller is already a problem in itself.
+
 	Despite the context of the problem being a computer game, the problem itself is a general one, and the proposed approach can be applied to any high-dimensional deterministic planning problem.
-	Which constitutes the core value of this work.
+	This constitutes the core value of this work.
 
 	In the span of this work, only three distinct cases were explored, and the more thorough exploration of the parameter space is left for a dissertation-level research.
 
