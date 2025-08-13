@@ -281,7 +281,7 @@ This parametrization constrains the space of possible behaviors, making the opti
     	then DuelingClassesPriority is High
   \end{verbatim}
 
-  This rules format depends on the concept of the Fuzzy Variable, which is a combination of four major parts:
+  This rules format depends on the concept of the \textbf{Fuzzy Variable}, which is a combination of four major parts:
 
   \begin{enumerate}
     \item Name
@@ -290,19 +290,57 @@ This parametrization constrains the space of possible behaviors, making the opti
     \item Set of fuzzy sets describing the possible fuzzy values of this variable
   \end{enumerate}
 
-  The concept of Fuzzy Variable, in turn, depends on the concept of a fuzzy value, which is a combination of two major parts:
+  The concept of Fuzzy Variable, in turn, depends on the concept of a \textbf{fuzzy value}, which is a combination of two major parts:
 
   \begin{enumerate}
     \item Name
     \item Membership function
   \end{enumerate}
 
-  A fuzzy controller is an algorithm which performs three large steps:
+  Where the \textbf{membership function} is a continuous function mapping the input ``strict'' values to real numbers between 0 and 1.
+  The \textit{membership function} of a fuzzy value describes the \textit{measure of belonging} of the current ``strict'' value of the variable to the given symbolic \textbf{term},
+  for example, ``high'', ``low'' and such.
+  Because of the \textit{terms} being literally words from a natural language, fuzzy variable is also called a \textbf{linguistic variable}.
+
+  Let's give \textbf{an example}.
+  Assume the following fuzzy variable:
+
+  \begin{eqnarray}
+    S = \left(N, R, V, T\right)\\
+    N = \text{``Strength''}\\
+    R = \textbb{Z} \in [0, 100]\\
+    V \in R\\
+    T = \left(\left(``Low'', f_l\right), \left(``Acceptable'', f_a\right), \left(``High'', f_h\right)\right)
+  \end{eqnarray}
+
+  It specifies three \textit{fuzzy terms} for the numeric property ``Strength'', which can have integer ``strict'' values from 0 to 100.
+  Thus, when we measure this property and provide a strict value for ``Strength'', we can determine the values of \textit{membership functions} of its three \textit{fuzzy terms}.
+  For example, if
+    $V = 72$
+  then
+    $T = \left(\left(``Low'', f_l(72) \right), \left(``Acceptable'', f_a(72) \right), \left(``High'', f_h(72)\right)\right)$
+
+  Which should be interpreted as ``Strength'' of 72 being at the same time $f_l(72)$ ``Low'', $f_a(72)$ ``Acceptable'' and $f_h(72)$ ``High''.
+
+  The process of calculating the values of membership functions for all the terms of a linguistic variable given its strict value is called \textbf{fuzzification} of this value.
+
+  The main point of the fuzzification, which we exploit in our method and which is at the core of the fuzzy control theory, is that we get the formal mechanism of transforming numeric values to domain-specific inexact vocabulary.
+
+  Fuzzy logic provides the reverse process as well.
+  It is possible to specify the values of the membership functions of all the terms in $T$ of the fuzzy variable, and from them calculate the ``strict'' value $V$.
+  This process is called \textbf{defuzzification} of the linguistic variable.
+
+  Continuing the above example, we can start by specifying the fuzzy values of ``Strength'' first, possibly, if we measure it by some inexact vague means:
+  $f_l = 0.4$, $f_a = 0.8$, $f_h = 0$.
+
+  Then, depending on the exact shape of the functions $f_l$, $f_a$ and $f_h$ defuzzification gives us a strict value of ``Strength'', say, $42$.
+
+  Given all the above, a \textbf{fuzzy controller} is an algorithm which performs three large steps:
 
   \begin{enumerate}
-    \item Convert all the strict values of the input fuzzy variables into the fuzzy values
+    \item Applies fuzzification of the values of all the input variables (antecedents of the fuzzy rules)
     \item Evaluate all the fuzzy rules, obtaining the fuzzy values of the output fuzzy variables
-    \item Apply the special \textit{defuzzification} operation to the output fuzzy variables, obtaining their strict values.
+    \item Applies defuzzification to the output fuzzy variables, obtaining their strict values.
   \end{enumerate}
 
   In our system, we're going to have the vector of inclinations and the current state of the specimen as input variables for the controller,
@@ -310,21 +348,21 @@ This parametrization constrains the space of possible behaviors, making the opti
   This will allow us to imitate the process of ``decision making'' of the specimen to choose the next action to perform.
 
 	\textbf{The major benefit and the core reason} for the fuzzy controller is the ability to encode the domain knowledge in a limited set of rules which will be formally processed.
-	
+
 	Compared to, for example, some of the reinforcement learning methods, we don't need to specify the full table of rewards for every possible action-state combination.
 	It is enough to specify one rule for every available action and the controller will already become fully functional.
 	With some configuration of rules it's possible to write even less of them.
-	
+
 	This allows to simplify the implementation of the solver, because one of the main weaknesses of the proposed solution is writing the fuzzy rules by hand.
 
   \textbf{The second benefit} of using the fuzzy controller for decision making is that it can be applied without major changes to non-deterministic, stochastic environment,
   for example, if the actions would be allowed to make randomized changes to the specimen's state, that is, if the transfer function would not be pure.
   It opens up the possibilities to explore this topic further in the later works.
-	
+
 	\subsection{Control feedback loop as a fitness function}\label{fitness}
 
 	A single trajectory in the action space is explored using the following process.
-	
+
 	\begin{enumerate}
 		\item We start with the initial state $\mathbf{x}_0$ and the given set of inclinations $\mathbf{I}^k$
 		\item\label{loop:evaluate} We evaluate both $\mathbf{x}_0$ and $\mathbf{I}^k$ with the preconfigured fuzzy controller
