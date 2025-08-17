@@ -468,6 +468,14 @@ This parametrization constrains the space of possible behaviors, making the opti
 
   In the example only two membership functions are used: \texttt{Ramp} and \texttt{Triangle}, but \texttt{fuzzylite} has around 20 of them predefined at the time of writing this report.
   
+  The following line specifies a single term of a fuzzy variable:
+  
+  \begin{verbatim}
+  	term: tiny Ramp 0.330 0.000
+  \end{verbatim}
+  
+  In this line, the word \texttt{tiny} is the symbolic name of the term, 
+  
   Given the definitions of all the fuzzy variables, the list of rules of the fuzzy controller is specified in almost the natural language~\footnote{``then'' clauses has been moved to the next lines for the line to fit on the paper, in the actual code rule is written on a single line without breaks}:
 
   \begin{verbatim}
