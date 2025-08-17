@@ -7,6 +7,8 @@
 \renewcommand\UrlFont{\color{blue}\rmfamily}
 
 \usepackage[backend=biber]{biblatex}
+\usepackage{csquotes} % smart quotes + tight integration with biblatex
+
 % Custom bibliography file
 \addbibresource{library.bib} 
 
@@ -67,11 +69,18 @@
 
 	\subsection{Existing methods assessment}\label{introduction:assessment}
 
-  % TODO: references for both!
-	There are two approaches which are deceptively obvious choices to solve this problem, namely, automatic planning theory~\cite{automaticPlanning} and reinforcement learning~\cite{sutton2018reinforcement}.
+	There are two approaches which are deceptively obvious choices to solve this problem, namely, automatic planning theory~\cite{fikes1971strips} and reinforcement learning~\cite{sutton2018reinforcement}.
 	
   \subsubsection{Automatic planning theory}
-	First, we can directly use one of the modern numeric solvers, for example, ENHSP~\cite{enhsp::scala2020subgoaling}~\cite{enhsp::Scala2016IntervalBasedRF}.
+  
+  To quote the foundational STRIPS paper:
+  
+  \blockcquote[p.~190]{fikes1971strips}
+  {The task of the problem solver is to find some composition of operators that transforms a given initial world model into one that satisfies some stated goal condition.}
+  
+  This sounds exactly like the description of the solver we want to get.
+  
+	We can directly use one of the modern numeric solvers, for example, ENHSP~\cite{enhsp::scala2020subgoaling}~\cite{enhsp::Scala2016IntervalBasedRF}.
 	
 	This is proven to work on small-scale problems: the code repository of the ENHSP-20 solver~\footnote{https://github.com/hstairs/enhsp/tree/enhsp-20} has benchmarks with essentially 40 numeric parameters and 10 action choices.
 	
@@ -265,7 +274,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	\subsection{Encoding domain knowledge of actions as a fuzzy controller}
 
-  Normally the Fuzzy logic is being explained from the fuzzy set theory by L. Zadeh~\cite{zadehFSbase}, but for this particular work the most important part of the fuzzy logic is the fuzzy rules for the fuzzy controller so it's more beneficial to start with them.
+  Normally the Fuzzy logic is being explained from the fuzzy set theory by L. Zadeh~\cite{zadeh1965fuzzy}, but for this particular work the most important part of the fuzzy logic is the fuzzy rules for the fuzzy controller so it's more beneficial to start with them.
 
   In the scope of the FL it is possible to express the domain knowledge in the form of symbolic rules, with the general form as follows:
 
@@ -307,8 +316,8 @@ This parametrization constrains the space of possible behaviors, making the opti
 
   \begin{eqnarray}
     S = \left(N, R, V, T\right)\\
-    N = \text{``Strength''}\\
-    R = \textbb{Z} \in [0, 100]\\
+    N = \textrm{``Strength''}\\
+    R = \mathbb{Z} \in [0, 100]\\
     V \in R\\
     T = \left(\left(``Low'', f_l\right), \left(``Acceptable'', f_a\right), \left(``High'', f_h\right)\right)
   \end{eqnarray}
@@ -376,13 +385,13 @@ This parametrization constrains the space of possible behaviors, making the opti
   It is important to understand that the state of a specimen is a transient value, used only for calculations of the final fitness after $T$ iterations.
   The solution we seek is fully encoded in the inclinations vector $\mathbf{I}$, which stays unchanged for the entirety of the control loop.
 
-	\subsection{Global optimization using an evolutionary algorithm}
+	\subsection{Global optimization using an evolutionary algorithm}\label{section::evolutionary}
 
-	Strong biosocial analogies and the configuration of the control loop from~\ref{fitness} suggest us to use the evolutionary algorithms~\cite{evolutionary} for optimization.
+	Strong biosocial analogies and the configuration of the control loop from~\ref{fitness} suggest us to use the evolutionary algorithms~\cite{song2023rl_ea}~\cite{beyer2002evolution_strategies} for optimization.
 	This is what would be used in this work.
 	However, in principle, any algorithm which is able to use the concept of a fitness function would be applicable here.
 
-  Evolutionary algorithms can be explained with an example of the so-called Simple Genetic Algorithm~\cite{pagmo:sga}.
+  Evolutionary algorithms can be explained with an example of the so-called Simple Genetic Algorithm~\footnote{https://esa.github.io/pagmo2/docs/cpp/algorithms/sga.html}.
 
   SGA operates on the set of \textbf{specimens}, each one being a single option in the search space to explore.
   A specimen is classically a list of characters, which is called literally a \textbf{genome}.
@@ -405,10 +414,10 @@ This parametrization constrains the space of possible behaviors, making the opti
   Then, we have 0.002 probability of a specimen with a genome `aaabb` turning into `ababb`.
 
   After the crossover and mutation, we finally apply the \textbf{replacement} which forms the new population for the next generation and the next round of evolution.
-  For example, we can use a so-called $\left(\mu + \lambda\right)$-evolution strategy~\cite{muPlusLambda}: calculate the fitness for all the new genomes and then pick $s$ ones with the best fitness from both the old genomes and new ones, where $s$ is the target population size.
+  For example, we can use a so-called $\left(\mu + \lambda\right)$-evolution strategy~\cite{schwefel1981numerical}: calculate the fitness for all the new genomes and then pick $s$ ones with the best fitness from both the old genomes and new ones, where $s$ is the target population size.
   The size of the population is being kept constant for the classical genetic algorithms, the role of the replacement operator is specifically to enforce that.
 
-  In the approach described in this work, the fitness function is the control loop described in the previous section~\ref{control-loop}.
+  In the approach described in this work, the fitness function is the control loop described in the previous section~\ref{fitness}.
   The genome of the specimen is the vector of inclinations.
 	And due to the choice of the specific library for the implementation of the evolutionary algorithms we have a wide selection of them,
   which means, we can explore different options starting from the Simple Genetic Algorithm and continuing with more complicated options.
@@ -426,8 +435,8 @@ This parametrization constrains the space of possible behaviors, making the opti
 	Contemporary C++, starting with the standard version 20, allows for a very high-level code as readable as a natural language.
   It also has libraries for both the fuzzy logic~\cite{fl::fuzzylite} and evolutionary computations~\cite{Biscani2020} for us to not implement any of them from scratch.
 
-	In talking on choice of the language for the implementation we cannot avoid comparisons with Python~\cite{Python}, assumed leader and language of choice for scientific experiments.
-	As has been stated above, it has been conscious decision to trade the ability to make rapid changes in the code, especially the ability to run convenient machinery like Jupyter notebooks~\cite{JupyterNotebooks}, for the raw processing power.
+	In talking on choice of the language for the implementation we cannot avoid comparisons with Python, assumed leader and language of choice for scientific experiments.
+	As has been stated above, it has been conscious decision to trade the ability to make rapid changes in the code, especially the ability to run convenient machinery like Jupyter notebooks, for the raw processing power.
 	This is because the C++20 and later is expressive enough to be as readable as Python sans some of the required syntax boilerplate, and in reality the most painful part of choosing C++ is building the program to be cross-platform, as Python programs are, and doing that with the code which uses third-party libraries is a nontrivial implementation problem.
 
 	\subsection{Fuzzylite library for the fuzzy controller implementation}
@@ -451,7 +460,7 @@ This parametrization constrains the space of possible behaviors, making the opti
     term: highest Ramp 0.670 1.000
   \end{verbatim}
 
-  Base syntax of this DSL is essentially YAML~\cite{YAML}.
+  Base syntax of this DSL is essentially YAML~\footnote{https://yaml.org/}.
 
   At the first line we specify the name of the variable and whether it will be used as an input or an output for the fuzzy rules.
   Among the properties of the variable we have the numerical range of strict values for it, supplementary flags \texttt{enabled} and \texttt{lock-range} not interesting at this moment
@@ -459,7 +468,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 
   In the example only two membership functions are used: \texttt{Ramp} and \texttt{Triangle}, but \texttt{fuzzylite} has around 20 of them predefined at the time of writing this report.
   
-  Given the definitions of all the fuzzy variables, the list of rules of the fuzzy controller is specified in almost the natural language:
+  Given the definitions of all the fuzzy variables, the list of rules of the fuzzy controller is specified in almost the natural language~\footnote{``then'' clauses has been moved to the next lines for the line to fit on the paper, in the actual code rule is written on a single line without breaks}:
 
   \begin{verbatim}
   RuleBlock: mamdani
@@ -468,10 +477,13 @@ This parametrization constrains the space of possible behaviors, making the opti
     disjunction: Maximum
     implication: AlgebraicProduct
     activation: General
-    rule: if PhysicalInclination is low  and MentalInclination is low    then MannersClass is high
-    rule: if PhysicalInclination is low  and MentalInclination is low    then Hunting is low
+    rule: if PhysicalInclination is low  and MentalInclination is low
+    	     then MannersClass is high
+    rule: if PhysicalInclination is low  and MentalInclination is low 
+    	     then Hunting is low
   \end{verbatim}
 
+	
   \texttt{RuleBlock} declaration specifies what is the exact variant of fuzzy controller we are going to use, the Mamdani~\cite{fuzzy::Mamdani} one or Sugeno~\cite{fuzzy::Sugeno} one.
   In the scope of this work we will be using Mamdani controllers exclusively.
 
@@ -481,7 +493,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	\section{Experiments and Results}
 
-	In the scope of this work we'll use the original Princess Maker 2 problem but segmented in four different problems of increasing scale.
+	In the scope of this work we'll use the original \textit{Princess Maker 2} problem but segmented in three different problems of increasing scale and internal complexity.
 	
 	\subsection{Trivial case}
 
@@ -532,6 +544,8 @@ This parametrization constrains the space of possible behaviors, making the opti
 	This constitutes the core value of this work.
 
 	In the span of this work, only three distinct cases were explored, and the more thorough exploration of the parameter space is left for a dissertation-level research.
+
+	The paper~\cite{song2023rl_ea} briefly mentioned in the section \ref{section::evolutionary}, is an possible alternative hybrid system, where the target of evolution is a reinforcement learning process.
 
 	\printbibliography
 
