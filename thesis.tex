@@ -3,14 +3,18 @@
 \usepackage{fullpage}
 \usepackage{amssymb}
 \usepackage{graphicx}
-\usepackage[hidelinks]{hyperref,xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
 \renewcommand\UrlFont{\color{blue}\rmfamily}
 
 \usepackage[backend=biber]{biblatex}
 \usepackage{csquotes} % smart quotes + tight integration with biblatex
-
 % Custom bibliography file
 \addbibresource{library.bib} 
+
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
 
 % Title of your project
 \title{Behavior approximation using fuzzy-genetic systems}
@@ -439,7 +443,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 	As has been stated above, it has been conscious decision to trade the ability to make rapid changes in the code, especially the ability to run convenient machinery like Jupyter notebooks, for the raw processing power.
 	This is because the C++20 and later is expressive enough to be as readable as Python sans some of the required syntax boilerplate, and in reality the most painful part of choosing C++ is building the program to be cross-platform, as Python programs are, and doing that with the code which uses third-party libraries is a nontrivial implementation problem.
 
-	\subsection{Fuzzylite library for the fuzzy controller implementation}
+	\subsection{Fuzzylite library for the fuzzy controller implementation}\label{fuzzy-implementation}
 
 	This work turned out to be more or less an assessment of usefulness of the \texttt{fuzzylite}~\cite{fl::fuzzylite} C++ library in addition to the main goal.
 	While being fully open sourced with a non-restrictive license terms, actually adding it to an existing C++ program is a task certainly not feasible for an arbitrary computer scientist not being the seasoned software engineer at the same time.
@@ -474,9 +478,44 @@ This parametrization constrains the space of possible behaviors, making the opti
   	term: tiny Ramp 0.330 0.000
   \end{verbatim}
   
-  In this line, the word \texttt{tiny} is the symbolic name of the term, 
+  In this line, the word \texttt{tiny} is the symbolic name of the term, which represents the vague description of the value directly from the domain knowledge.
   
-  Given the definitions of all the fuzzy variables, the list of rules of the fuzzy controller is specified in almost the natural language~\footnote{``then'' clauses has been moved to the next lines for the line to fit on the paper, in the actual code rule is written on a single line without breaks}:
+  The word \texttt{Ramp} is a keyword selecting the appropriate membership function from among the ones built-in in the fuzzylite library.
+  Figure~\ref{fig:left-ramp} displays the plot of this function.
+  
+  The notation \texttt{0.330 0.000} is an internal trick of the library to indicate the downward slope of the ramp by convention instead of some other method.
+  Writing the $x$ values in ascending order would mean that the ramp is increasing instead of decreasing.
+  
+  \begin{figure}[htbp]
+  	\centering
+  	\begin{tikzpicture}
+  		\begin{axis}[
+  			width=0.7\linewidth,
+  			axis lines=left,
+  			xlabel={$x$},
+  			ylabel={$\mu(x)$},
+  			xmin=-0.15, xmax=1.05,
+  			ymin=-0.02, ymax=1.02,
+  			xtick={0,0.3333,1},
+  			xticklabels={$0$, $0.33$, $1$},
+  			ytick={0,1},
+  			clip=false
+  			]
+  			% Левая плато при x<0, затем линейная рампа до 0.33 и ноль дальше
+  			\addplot[very thick] coordinates {
+  				(-0.15,1) (0,1) (0.3333333333,0) (1.05,0)
+  			};
+  			
+  			% (опционально) направляющие штриховые линии для 0 и 0.33
+  			\addplot[densely dotted] coordinates {(0,0) (0,1)};
+  			\addplot[densely dotted] coordinates {(0.3333333333,0) (0.3333333333,1)};
+  		\end{axis}
+  	\end{tikzpicture}
+  	\caption{``Left ramp'' membership function: $\mu(x)=1$ when $x<0$, linearly decreasing on $[0,\,0.33]$, and $\mu(x)=0$ when $x>0.33$.}
+  	\label{fig:left-ramp}
+  \end{figure}
+  
+  Given the definitions of all the fuzzy variables, the list of rules of the fuzzy controller is specified in almost the natural language~\footnote{``then'' clauses has been moved to the next lines for the line to fit on the paper, in an actual code the rule is written on a single line without breaks}:
 
   \begin{verbatim}
   RuleBlock: mamdani
@@ -495,22 +534,179 @@ This parametrization constrains the space of possible behaviors, making the opti
   \texttt{RuleBlock} declaration specifies what is the exact variant of fuzzy controller we are going to use, the Mamdani~\cite{fuzzy::Mamdani} one or Sugeno~\cite{fuzzy::Sugeno} one.
   In the scope of this work we will be using Mamdani controllers exclusively.
 
-
-
 	\subsection{Pagmo library for evolutionary computations}
 
+	Authors of the Pagmo library designed a very high-level API for the evolutionary computation, which can be completely summarized in the following code snippet:
+	
+	\begin{verbatim}
+		// declare the problem to solve
+		pagmo::problem prob(pm_problem{});
+		
+		// declare the algorithm to use
+		pagmo::algorithm algo(pagmo::sade(100));
+		
+		// declare the population to use
+		pagmo::archipelago archi(16u, algo, prob, 20u);
+		
+		// work
+		archi.evolve(10);
+		archi.wait_check();
+		
+		for (const auto& isl : archi)
+		{
+			const auto& champion = isl.get_population().champion_x();
+			// for example, print the champion.
+		}
+	\end{verbatim}
+
+	Pagmo library includes a large amount of already implemented algorithms which brings us two benefits:
+	
+	\begin{enumerate}
+		\item there's no need to implement them from scratch
+		\item it's easy to experiment as we can change the algorithm just by changing the function name to use in the \texttt{pagmo::algorithm} object creation.
+	\end{enumerate}
+	
+	Pagmo uses a Generalized Island Model to perform computations in parallel~\cite{Izzo2012}, and because of that instead of the ``population'' the base terminology is ``archipelago''.
+	An archipelago consists of ``islands'', each containing a separate population to evolve.
+	
+	After we run an evolution, we can visit every island and check the final result of the population evolution, including getting the best specimen, called ``champion'' in Pagmo.
+	
+	To integrate our solver into this computational framework, we need only to declare our own problem class compatible with \texttt{pagmo::problem} class requirements.
+	
+	For this, in the span of this work, it is enough for us to declare the following structure with two member functions:
+	
+	\begin{verbatim}
+		struct pm_problem {
+			std::pair<pagmo::vector_double, pagmo::vector_double> get_bounds() const
+			{
+				return { {0., 0.}, {1., 1.} };
+			}
+			
+			// Implementation of the objective function.
+			pagmo::vector_double fitness(const pagmo::vector_double& dv) const
+			{
+				// ...implementation of the fitness function...
+			}
+		};
+	\end{verbatim}
+	
+	The function \textbf{\texttt{get\_bounds}} describes the range of values from which the specimens would be generated.
+	
+	In the example above, we declare that every specimen is a vector of two real values between $0$ and $1$ inclusive.
+	This is the setup for the ``Trivial case'' experiment from the section~\ref{trivial-case}.
+	
+	The function \textbf{texttt{fitness}} calculates the fitness value of the given specimen.
+	In a classical evolutionary optimization problems, this fitness function is the pure mathematical function easy to calculate, so the algorithm itself presents the main computational challenge for the computing device.
+	In our problem, however, this function contains the implementation described in the section~\ref{fuzzy-implementation} of the control loop described in the section~\ref{fitness}.
+	
 	\section{Experiments and Results}
 
 	In the scope of this work we'll use the original \textit{Princess Maker 2} problem but segmented in three different problems of increasing scale and internal complexity.
 	
-	\subsection{Trivial case}
+	\subsection{Trivial case}\label{trivial-case}
 
-	2 characteristics, 4 mutually exclusive actions, 3 steps.
+	4 characteristics, 4 mutually exclusive actions, 3 steps.
 
 	This scenario represents a trivial case, with only $4^{3}$ possible action sequences—a total of 64.
 	The small state space allows for exhaustive enumeration and manual verification of results.
 	This case serves to validate the correctness of the implementation and the fuzzy controller, as the system's behavior can be easily traced and analyzed by hand.
 
+
+
+	The full text of the fuzzy controller for the trivial case looks as follows:
+	
+	\begin{verbatim}
+Engine: Trivial
+
+# Inclinations
+
+InputVariable: PhysicalInclination
+	enabled: true
+	range: 0 1.000
+	lock-range: false
+	term: tiny Ramp 0.330 0.000 
+	term: low Triangle 0.000 0.330 0.670
+	term: high Triangle 0.330 0.670 1.000
+	term: highest Ramp 0.670 1.000
+
+InputVariable: MentalInclination
+	enabled: true
+	range: 0 1.000
+	lock-range: false
+	term: tiny Ramp 0.330 0.000 
+	term: low Triangle 0.000 0.330 0.670
+	term: high Triangle 0.330 0.670 1.000
+	term: highest Ramp 0.670 1.000
+
+# Action Priorities
+
+OutputVariable: Hunting
+	enabled: true
+	range: 0.000 1.000
+	lock-range: false
+	aggregation: Maximum
+	defuzzifier: Centroid 100
+	default: nan
+	lock-previous: false
+	term: low Ramp 1.000 0.000
+	term: high Ramp 0.000 1.000
+
+OutputVariable: Lumberjack
+	enabled: true
+	range: 0.000 1.000
+	lock-range: false
+	aggregation: Maximum
+	defuzzifier: Centroid 100
+	default: nan
+	lock-previous: false
+	term: low Ramp 1.000 0.000
+	term: high Ramp 0.000 1.000
+
+OutputVariable: ScienceClass
+	enabled: true
+	range: 0.000 1.000
+	lock-range: false
+	aggregation: Maximum
+	defuzzifier: Centroid 100
+	default: nan
+	lock-previous: false
+	term: low Ramp 1.000 0.000
+	term: high Ramp 0.000 1.000
+
+OutputVariable: MannersClass
+	enabled: true
+	range: 0.000 1.000
+	lock-range: false
+	aggregation: Maximum
+	defuzzifier: Centroid 100
+	default: nan
+	lock-previous: false
+	term: low Ramp 1.000 0.000
+	term: high Ramp 0.000 1.000
+
+
+# Rules
+
+RuleBlock: mamdani
+	enabled: true
+	conjunction: Minimum
+	disjunction: Maximum
+	implication: AlgebraicProduct
+	activation: General
+	rule: if PhysicalInclination is low  and MentalInclination is low    then MannersClass is high
+	rule: if PhysicalInclination is low  and MentalInclination is low    then Hunting is low
+	rule: if MentalInclination is high   and PhysicalInclination is low  then ScienceClass is high
+	rule: if MentalInclination is high   and PhysicalInclination is low  then Lumberjack is low
+	rule: if PhysicalInclination is high and MentalInclination is low    then Lumberjack is high
+	rule: if PhysicalInclination is high and MentalInclination is low    then ScienceClass is low
+	rule: if MentalInclination is high   and PhysicalInclination is high then Hunting is high
+	rule: if MentalInclination is high   and PhysicalInclination is high then MannersClass is low
+	\end{verbatim}
+	
+	As can be seen, the rules mention only the inclination values.
+	This has one important consequence.
+	
+	
 	\subsection{Base control case}
     
 	4 characteristics, 12 actions, 100 steps.
