@@ -21,7 +21,7 @@
 
 % Source code highlighting BEGIN
 \usepackage{listings}
-
+\lstset{basicstyle=\small,defaultdialect=[11]c++,frame=lines,numbers=left,numberstyle=\tiny,tabsize=2}
 % YAML highlighting hack BEGIN
 
 \newcommand\YAMLcolonstyle{\color{red}\mdseries}
@@ -626,7 +626,7 @@ for (const auto& isl : archi)
 	
 	For this, in the span of this work, it is enough for us to declare the following structure with two member functions:
 	
-	\begin{lstlisting}[language={[11]c++},frame=lines,numbers=left,numberstyle=\tiny,tabsize=2]
+	\begin{lstlisting}[language={[11]c++}]
 struct pm_problem {
 	std::pair<pagmo::vector_double, pagmo::vector_double> get_bounds() const
 	{
