@@ -15,6 +15,55 @@
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
 
+% Must compile the document with -shell-escape
+% Must compile the document in an environment where the `pygments` library is installed in Python
+%\usepackage{minted}
+
+% Source code highlighting BEGIN
+\usepackage{listings}
+
+% YAML highlighting hack BEGIN
+
+\newcommand\YAMLcolonstyle{\color{red}\mdseries}
+\newcommand\YAMLkeystyle{\color{black}\bfseries}
+\newcommand\YAMLvaluestyle{\color{blue}\mdseries}
+
+\makeatletter
+
+% here is a macro expanding to the name of the language
+% (handy if you decide to change it further down the road)
+\newcommand\language@yaml{yaml}
+
+\expandafter\expandafter\expandafter\lstdefinelanguage
+\expandafter{\language@yaml}
+{
+	keywords={true,false,null,y,n},
+	keywordstyle=\color{darkgray}\bfseries,
+	basicstyle=\YAMLkeystyle,                                 % assuming a key comes first
+	sensitive=false,
+	comment=[l]{\#},
+	morecomment=[s]{/*}{*/},
+	commentstyle=\color{purple}\ttfamily,
+	stringstyle=\YAMLvaluestyle\ttfamily,
+	moredelim=[l][\color{orange}]{\&},
+	moredelim=[l][\color{magenta}]{*},
+	moredelim=**[il][\YAMLcolonstyle{:}\YAMLvaluestyle]{:},   % switch to value style at :
+	morestring=[b]',
+	morestring=[b]",
+	literate =    {---}{{\ProcessThreeDashes}}3
+	{>}{{\textcolor{red}\textgreater}}1     
+	{|}{{\textcolor{red}\textbar}}1 
+	{\ -\ }{{\mdseries\ -\ }}3,
+}
+
+% switch to key style at EOL
+\lst@AddToHook{EveryLine}{\ifx\lst@language\language@yaml\YAMLkeystyle\fi}
+\makeatother
+
+\newcommand\ProcessThreeDashes{\llap{\color{cyan}\mdseries-{-}-}}
+% YAML highlighting hack END
+% Source code highlighting END
+
 
 % Title of your project
 \title{Behavior approximation using fuzzy-genetic systems}
@@ -453,7 +502,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 
   On the following code example is a description of a fuzzy variable in the DSL of \texttt{fuzzylite}.
 
-  \begin{verbatim}
+  \begin{lstlisting}[language=yaml]
   InputVariable: PhysicalInclination
     enabled: true
     range: 0 1.000
@@ -462,7 +511,7 @@ This parametrization constrains the space of possible behaviors, making the opti
     term: low Triangle 0.000 0.330 0.670
     term: high Triangle 0.330 0.670 1.000
     term: highest Ramp 0.670 1.000
-  \end{verbatim}
+  \end{lstlisting}
 
   Base syntax of this DSL is essentially YAML~\footnote{https://yaml.org/}.
 
@@ -474,9 +523,9 @@ This parametrization constrains the space of possible behaviors, making the opti
   
   The following line specifies a single term of a fuzzy variable:
   
-  \begin{verbatim}
+  \begin{lstlisting}[language=yaml]
   	term: tiny Ramp 0.330 0.000
-  \end{verbatim}
+  \end{lstlisting}
   
   In this line, the word \texttt{tiny} is the symbolic name of the term, which represents the vague description of the value directly from the domain knowledge.
   
@@ -517,7 +566,7 @@ This parametrization constrains the space of possible behaviors, making the opti
   
   Given the definitions of all the fuzzy variables, the list of rules of the fuzzy controller is specified in almost the natural language~\footnote{``then'' clauses has been moved to the next lines for the line to fit on the paper, in an actual code the rule is written on a single line without breaks}:
 
-  \begin{verbatim}
+  \begin{lstlisting}[language=yaml]
   RuleBlock: mamdani
     enabled: true
     conjunction: Minimum
@@ -528,7 +577,7 @@ This parametrization constrains the space of possible behaviors, making the opti
     	     then MannersClass is high
     rule: if PhysicalInclination is low  and MentalInclination is low 
     	     then Hunting is low
-  \end{verbatim}
+  \end{lstlisting}
 
 	
   \texttt{RuleBlock} declaration specifies what is the exact variant of fuzzy controller we are going to use, the Mamdani~\cite{fuzzy::Mamdani} one or Sugeno~\cite{fuzzy::Sugeno} one.
@@ -538,26 +587,26 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	Authors of the Pagmo library designed a very high-level API for the evolutionary computation, which can be completely summarized in the following code snippet:
 	
-	\begin{verbatim}
-		// declare the problem to solve
-		pagmo::problem prob(pm_problem{});
-		
-		// declare the algorithm to use
-		pagmo::algorithm algo(pagmo::sade(100));
-		
-		// declare the population to use
-		pagmo::archipelago archi(16u, algo, prob, 20u);
-		
-		// work
-		archi.evolve(10);
-		archi.wait_check();
-		
-		for (const auto& isl : archi)
-		{
-			const auto& champion = isl.get_population().champion_x();
-			// for example, print the champion.
-		}
-	\end{verbatim}
+	\begin{lstlisting}[language=c++]
+// declare the problem to solve
+pagmo::problem prob(pm_problem{});
+
+// declare the algorithm to use
+pagmo::algorithm algo(pagmo::sade(100));
+
+// declare the population to use
+pagmo::archipelago archi(16u, algo, prob, 20u);
+
+// work
+archi.evolve(10);
+archi.wait_check();
+
+for (const auto& isl : archi)
+{
+	const auto& champion = isl.get_population().champion_x();
+	// for example, print the champion.
+}
+	\end{lstlisting}
 
 	Pagmo library includes a large amount of already implemented algorithms which brings us two benefits:
 	
@@ -571,31 +620,33 @@ This parametrization constrains the space of possible behaviors, making the opti
 	
 	After we run an evolution, we can visit every island and check the final result of the population evolution, including getting the best specimen, called ``champion'' in Pagmo.
 	
-	To integrate our solver into this computational framework, we need only to declare our own problem class compatible with \texttt{pagmo::problem} class requirements.
+	\subsection{Implementing the method using fuzzylite and pagmo libraries}
+	
+	To implement our solver in this computational framework, first we need to declare our own ``problem'' class compatible with \texttt{pagmo::problem} class requirements.
 	
 	For this, in the span of this work, it is enough for us to declare the following structure with two member functions:
 	
-	\begin{verbatim}
-		struct pm_problem {
-			std::pair<pagmo::vector_double, pagmo::vector_double> get_bounds() const
-			{
-				return { {0., 0.}, {1., 1.} };
-			}
-			
-			// Implementation of the objective function.
-			pagmo::vector_double fitness(const pagmo::vector_double& dv) const
-			{
-				// ...implementation of the fitness function...
-			}
-		};
-	\end{verbatim}
+	\begin{lstlisting}[language={[11]c++},frame=lines,numbers=left,numberstyle=\tiny,tabsize=2]
+struct pm_problem {
+	std::pair<pagmo::vector_double, pagmo::vector_double> get_bounds() const
+	{
+		return { {0., 0.}, {1., 1.} };
+	}
+	
+	// Implementation of the objective function.
+	pagmo::vector_double fitness(const pagmo::vector_double& dv) const
+	{
+		// ...implementation of the fitness function...
+	}
+};
+	\end{lstlisting}
 	
 	The function \textbf{\texttt{get\_bounds}} describes the range of values from which the specimens would be generated.
 	
 	In the example above, we declare that every specimen is a vector of two real values between $0$ and $1$ inclusive.
 	This is the setup for the ``Trivial case'' experiment from the section~\ref{trivial-case}.
 	
-	The function \textbf{texttt{fitness}} calculates the fitness value of the given specimen.
+	The function \textbf{\texttt{fitness}} calculates the fitness value of the given specimen.
 	In a classical evolutionary optimization problems, this fitness function is the pure mathematical function easy to calculate, so the algorithm itself presents the main computational challenge for the computing device.
 	In our problem, however, this function contains the implementation described in the section~\ref{fuzzy-implementation} of the control loop described in the section~\ref{fitness}.
 	
@@ -611,11 +662,9 @@ This parametrization constrains the space of possible behaviors, making the opti
 	The small state space allows for exhaustive enumeration and manual verification of results.
 	This case serves to validate the correctness of the implementation and the fuzzy controller, as the system's behavior can be easily traced and analyzed by hand.
 
-
-
 	The full text of the fuzzy controller for the trivial case looks as follows:
 	
-	\begin{verbatim}
+	\begin{lstlisting}[language=yaml]
 Engine: Trivial
 
 # Inclinations
@@ -701,7 +750,7 @@ RuleBlock: mamdani
 	rule: if PhysicalInclination is high and MentalInclination is low    then ScienceClass is low
 	rule: if MentalInclination is high   and PhysicalInclination is high then Hunting is high
 	rule: if MentalInclination is high   and PhysicalInclination is high then MannersClass is low
-	\end{verbatim}
+	\end{lstlisting}
 	
 	As can be seen, the rules mention only the inclination values.
 	This has one important consequence.
