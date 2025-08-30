@@ -1,5 +1,5 @@
-\documentclass[11pt, a4paper]{article}
-\usepackage[utf8]{inputenc} 
+\documentclass[12pt, a4paper]{article}
+%\usepackage[utf8]{inputenc} 
 \usepackage{fullpage}
 \usepackage{amssymb}
 \usepackage{graphicx}
@@ -67,7 +67,7 @@
 
 
 % Title of your project
-\title{Behavior approximation using fuzzy-genetic systems}
+\title{Fuzzy-Genetic Hybrid Models for Large-Horizon Deterministic Planning}
 
 % Name of deliverable
 \newcommand{\deliverableName}{Master's Thesis}
@@ -98,10 +98,15 @@
 	
 	\section{Introduction}
 	
-	In this section we'll set up the context of a problem to be solved and briefly cover the most obvious approaches to its solution.
-	Readers which don't require such an introduction can proceed directly to the \ref{problem-statement}.
+	A deterministic planning problem is a classical and generic problem applicable to a variety of real-world problems.
+	However, it is also prone to a combinatorial explosion when the range of the actions to choose and the planning horizon (length of the sequence of actions to find) become sufficiently large.
 	
-	\subsection{A game solver as a scheduling problem}
+	In this work we discuss an alternative approach of solving deterministic planning problems with large planning horizons and large action spaces, using a hybrid fuzzy-genetic system which relies on a domain knowledge to reduce the dimensionality.
+	
+	In this introduction section we'll set up the context of a problem to be solved and briefly cover the most obvious approaches to its solution.
+	Readers which don't require such an introduction can proceed directly to the section \ref{problem-statement}.
+	
+	\subsection{A game solver as a planning problem}
 
 	In 1993 in Japan Studio Gainax released a computer game called \textit{Princess Maker 2}.
 	The game belongs to a so-called ``life simulation'' genre, the player takes the role of a guardian of a young girl, making decisions that affect her upbringing and future.
@@ -119,8 +124,33 @@
 	The title of the game is the hint on the ultimate goal, but depending on the final characteristics of the girl (and some special story-dependent flags we ignore in this work) game can end in more than twenty different endings.
 		
 	This is essentially a stateful agent planning its behavior according to the predefined goal to be reached.
-	Thus, the question arises: can we solve it? Given the desired ending, can we deduce the total ``schedule'', a full list of choices to make to get to this ending, automatically and in one go? This question lies in the core of this work.
+	
+	Thus, we organically come to a planning problem, and a question arises: can we solve it? Given the desired ending, can we deduce the total ``schedule'', a full list of choices to make to get to this ending, automatically and in one go? This question lies in the core of this work.
+	
+	Solving the full Princess Maker 2 game is completely out of scope of this work.
+	The game contains a set of auxiliary gameplay mechanics which significantly influence the evolution of a character, and a hidden storyline-dependent flags which are necessary to reach some of the endings.
+	These elements are not fit for modelling as a planning problem.
+	
+	So, we will abstract the origin game into the most simplistic model, namely:
+	
+	\begin{enumerate}
+		\item only the numerical attributes of a character are considered for an ending state (we ignore story-related boolean flags)
+		\item each action has a completely determined effect on character attributes (in the original game actions have randomized effects from a range of values)
+		\item actions are the only way to change the character state (we ignore all other gameplay mechanics except the week-by-week schedule of actions)
+	\end{enumerate}
 
+	As the result of this simplification, we are left over with a deterministic planning problem, which nevertheless has a significant scale, because in the Princess Maker 2 game there are:
+	
+	\begin{enumerate}
+		\item 50 numerical attributes of a character
+		\item 25 possible actions to schedule
+		\item the end state is evaluated and compared to the goal after 360 action steps.
+	\end{enumerate}
+
+	This presents a significant challenge to classic algorithms.
+	
+	At the same time, because this problem is so generic, any progress in finding an efficient solution to it is beneficial to multiple areas.
+	
 	\subsection{Existing methods assessment}\label{introduction:assessment}
 
 	There are two approaches which are deceptively obvious choices to solve this problem, namely, automatic planning theory~\cite{fikes1971strips} and reinforcement learning~\cite{sutton2018reinforcement}.
@@ -162,8 +192,8 @@
 	
 	\section{Formal problem statement}\label{problem-statement}
 
-	As discussed in~\ref{introduction:assessment}, formally we have a choice of whether to treat this as a planning problem or a control problem.
-	Despite Reinforcement learning not being fit for our cause, we will still approach our origin problem as a control problem.
+	As follows from the section~\ref{introduction:assessment}, formally we have a choice of whether to treat this as a planning problem or a control problem.
+	Despite Reinforcement learning not being fit for our cause, we will still approach our origin problem as a control problem, as it allows us to formally introduce our solution approach later in~\ref{section::solution}.
 
 	\subsection{Actor behavior as a control problem}
 
@@ -245,7 +275,7 @@
 
 	With these restrictions in place, a need in an heuristic arises to perform efficient search in the state space, as its size becomes unrealistically large.
 	
-	\section{Proposed solution approach}
+	\section{Proposed solution approach}\label{section::solution}
 
 Classical reinforcement learning methods become intractable in this domain due to the high dimensionality of the state space, large action set, and long planning horizon. Moreover, the inability to halt or take neutral actions further exacerbates the combinatorial explosion of the trajectory space.
 
@@ -703,8 +733,10 @@ double simulate(const Inclinations& inclinations, fl::Engine* engine)
 	Stats stats{ 0.0, 0.0, 0.0, 0.0 };
 	
 	// Set inclinations
-	engine->getInputVariable("PhysicalInclination")->setValue(std::get<0>(inclinations));
-	engine->getInputVariable("MentalInclination")->setValue(std::get<1>(inclinations));
+	engine->getInputVariable("PhysicalInclination")
+		  ->setValue(std::get<0>(inclinations));
+	engine->getInputVariable("MentalInclination")
+	      ->setValue(std::get<1>(inclinations));
 	
 	for (int i = 0; i < T; ++i)
 	{
@@ -758,7 +790,8 @@ const std::unordered_map<
 	\begin{lstlisting}[language=c++]
 std::string choose_action(fl::Engine* engine, const Stats& stats)
 {
-	// Load the specimen into the engine - assume that inclinations are already set
+	// Load the specimen into the engine
+	// assume that inclinations are already set
 	
 	engine->getInputVariable("strength")->setValue(std::get<0>(stats));
 	engine->getInputVariable("constitution")->setValue(std::get<1>(stats));
@@ -773,8 +806,12 @@ std::string choose_action(fl::Engine* engine, const Stats& stats)
 	output_vars.begin(), output_vars.end(),
 		[](const auto* a, const auto* b) {
 			// defaulting to 0 if the value is NaN
-			const auto left_priority = std::isnan(a->getValue()) ? 0.0 : a->getValue();
-			const auto right_priority = std::isnan(b->getValue()) ? 0.0 : b->getValue();
+			const auto left_priority = std::isnan(a->getValue()) 
+				? 0.0 
+				: a->getValue();
+			const auto right_priority = std::isnan(b->getValue()) 
+				? 0.0 
+				: b->getValue();
 			
 			return left_priority < right_priority;
 		}
@@ -999,6 +1036,11 @@ RuleBlock: mamdani
 	
 		\subsection{Discussion of the results}
 		(to be done)
+
+% The first one is regarding the data. In the documentation you talk about the game, but you don’t explain the information about the input variables, you should give more details to get the complexity on how much information there is in the input. You also talk about the chromosomes, but I cannot see the translation from the input into these chromosomes.
+%I also would like to know how you want to evaluate the quality of the ouptut.
+%Are these experiments that you explain in the video described in the report?
+
 	
 	\section{Conclusions and Future Work}
 
@@ -1012,6 +1054,9 @@ RuleBlock: mamdani
 	In the span of this work, only three distinct cases were explored, and the more thorough exploration of the parameter space is left for a dissertation-level research.
 
 	The paper~\cite{song2023rl_ea} briefly mentioned in the section \ref{section::evolutionary}, is an possible alternative hybrid system, where the target of evolution is a reinforcement learning process.
+
+
+
 
 	\printbibliography
 
