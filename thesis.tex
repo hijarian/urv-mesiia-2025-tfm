@@ -98,10 +98,10 @@
 	
 	\section{Introduction}
 	
-	A deterministic planning problem is a classical and generic problem applicable to a variety of real-world problems.
+	A deterministic planning problem for a stateful agent is a classical and generic problem applicable to a variety of real-world problems.
 	However, it is also prone to a combinatorial explosion when the range of the actions to choose and the planning horizon (length of the sequence of actions to find) become sufficiently large.
 	
-	In this work we discuss an alternative approach of solving deterministic planning problems with large planning horizons and large action spaces, using a hybrid fuzzy-genetic system which relies on a domain knowledge to reduce the dimensionality.
+	In this work we discuss an alternative approach of solving deterministic planning problems for stateful agents with large planning horizons and large action spaces, using a hybrid fuzzy-genetic system which relies on a domain knowledge to reduce the dimensionality.
 	
 	In this introduction section we'll set up the context of a problem to be solved and briefly cover the most obvious approaches to its solution.
 	Readers which don't require such an introduction can proceed directly to the section \ref{problem-statement}.
@@ -109,7 +109,8 @@
 	\subsection{A game solver as a planning problem}
 
 	In 1993 in Japan Studio Gainax released a computer game called \textit{Princess Maker 2}.
-	The game belongs to a so-called ``life simulation'' genre, the player takes the role of a guardian of a young girl, making decisions that affect her upbringing and future.
+	The game essentially defined a so-called ``life simulation'' genre.
+	The player takes the role of a guardian of a young girl, making decisions that affect her upbringing and future.
 	\textit{Princess Maker 2} is a narrative-heavy game, with a diverse set of gameplay elements depending on player's choices, but under the plot and all the other art elements which normally constitute a computer game, lies very formal and routine core gameplay loop:
 	
 	\begin{enumerate}
@@ -651,7 +652,7 @@ for (const auto& isl : archi)
 	
 	After we run an evolution, we can visit every island and check the final result of the population evolution, including getting the best specimen, called ``champion'' in Pagmo.
 	
-	\subsection{Implementing the method using fuzzylite and pagmo libraries}
+	\subsection{Implementing the method using fuzzylite and pagmo libraries}\label{section::implementation}
 	
 	To implement our solver in this computational framework, first we need to declare our own ``problem'' class compatible with \texttt{pagmo::problem} class requirements.
 	
@@ -775,8 +776,8 @@ const std::unordered_map<
 > actions{
 	{ "Hunting",    { 0.00, 0.01, 0.00, -0.01 } },
 	{ "Lumberjack", { 0.02, 0.00, 0.00, -0.02 } },
-	{ "ScienceClass", { 0.0, 0.0, 0.20, 0.0 } },
-	{ "MannersClass", { 0.0, 0.0, 0.0, 2.0 } },
+	{ "ScienceClass", { 0.0, 0.0, 0.02, 0.0 } },
+	{ "MannersClass", { 0.0, 0.0, 0.0, 0.02 } },
 };	
 	\end{lstlisting}
 	
@@ -878,13 +879,37 @@ double fitness(const Stats& stats)
 	
 	\section{Experiment 1: Trivial case}\label{trivial-case}
 
-	4 characteristics, 4 mutually exclusive actions, 3 steps.
+	First case has been used solely for assessing the possibility of constructing the system at all.
+	It is too small to be a useful example of problems solvable by the proposed solver.
+	
+	We define 4 numerical attributes: \texttt{Strength}, \texttt{Constitution}, \texttt{Intelligence} and \texttt{Refinement}.
+	
+	These 4 attributes are changed by 4 mutually exclusive actions, listed in the table~\ref{table::trivial-case-actions}.
+	
+\begin{table}[h!]
+	\centering
+	\caption{Trivial case actions}
+	\label{table::trivial-case-actions}
+	\begin{tabular}{|c|c|c|c|c|}
+		\hline
+		              &   \multicolumn{4}{|c|}{Atrribute changes}               \\ \hline
+		Action        & Strength & Constitution &  Intelligence  & Refinement   \\ \hline
+		Hunting       & 0.00     & 0.01         &  0.00          & -0.01        \\ \hline
+		Lumberjack    & 0.02     & 0.00         &  0.00          & -0.02        \\ \hline
+		ScienceClass  & 0.00     & 0.00         &  0.02          &  0.00        \\ \hline
+		MannersClass  & 0.00     & 0.00         &  0.00          &  0.02        \\ \hline
+	\end{tabular}
+\end{table}
+
+	We will run this problem on a goal states reachable in 4 steps, meaning, our $T$ is 4 for a trivial case.
 
 	This scenario represents a trivial case, with only $4^{3}$ possible action sequences—a total of 64.
 	The small state space allows for exhaustive enumeration and manual verification of results.
 	This case serves to validate the correctness of the implementation and the fuzzy controller, as the system's behavior can be easily traced and analyzed by hand.
 
-	The full text of the fuzzy controller for the trivial case looks as follows:
+	From the list of attributes and actions we synthesize two inclinations: \texttt{Physical Inclination} and \texttt{Mental Inclination}, which represent, correspondingly, ``an inclination to perform actions related to physical attributes improvement'' and ``an inclination to perform actions related to mental attributes improvement''.
+	
+	The full text of the fuzzy controller for the trivial case, which binds two inclinations and four actions, looks as follows:
 	
 	\begin{lstlisting}[language=yaml]
 Engine: Trivial
@@ -974,21 +999,98 @@ RuleBlock: mamdani
 	rule: if MentalInclination is high   and PhysicalInclination is high then MannersClass is low
 	\end{lstlisting}
 	
-	As can be seen, the rules mention only the inclination values.
-	This has one important consequence.
+	Correspondingly, the goal state is expressed as the following fitness function:
+	
+	\begin{lstlisting}
+double fitness(const Stats& stats)
+{
+	// Stat of index 3 is refinement
+	return 0.07 - std::get<3>(stats);
+}
+	\end{lstlisting}
+	
+	In the 4-tuple \texttt{Stats} the element at index 3 (zero-based) is a Refinement attribute, so this fitness function expresses the goal ``Refinement must be more than 0.07''.
+	
+	Given the table of action effects and the goal, it's obvious that the only correct sequence of actions which can reach this goal is an action ``MannersClass'' repeated 4 times in a row, as this action is the only way to get an increase in the ``Refinement'' attribute.
+	
+	The archipelago has been configured in the following manner:
+	
+	\begin{lstlisting}
+pagmo::algorithm algo(pagmo::sade(100));
+pagmo::archipelago archi(16u, algo, prob, 20u);
+	\end{lstlisting}
+
+	Four arguments to the \texttt{pagmo::archipelago} constructor are number of islands, algorithm to use, problem to solve and size of the population on each island.
+	These are the slice of the hyperparameters which are related to evolutionary optimizations.
+	
+	The algorithm that has been chosen (\texttt{pagmo::sade}) is an instance of Self-adaptive Differential Evolution algorithm, jDE variant~\ref{sade_jDE}~\ref{sade_iDE}, for no reason other than being mentioned the first in the Pagmo documentation examples.
+
+	Running this system with the above setup results in 16 islands all evolving to the specimen which successfully reach the goal.
+	
+	The following listing is an example listing of champions across the archipelago --- due to stochastic nature of evolutionary optimization, every run will provide different specimen.
+	
+	\begin{verbatim}
+		{0.292813, 0.31037}   fitness -0.03
+		{0.223563, 0.274446}  fitness -0.03
+		{0.667839, 0.0552651} fitness -0.03
+		... 12 more ...
+		{0.036359, 0.0444171} fitness -0.03
+	\end{verbatim}
+	
+	Due to the deterministic nature of the problem, we can get the exact list of actions from the specimen by simply calling the \texttt{simulate} function (explained in the section~\ref{section::implementation}) with the inclination values gotten from the archipelago champions.
+	
+	In this case, the list of actions is correctly inferred as 4 instances of ``MannersClass''.
+	
+	If we change the goal to check the ``Constitution'', then the system converges to an action sequence of 4 instances of a ``Hunting'' action, with the following specimen examples:
+	
+	\begin{verbatim}
+		{0.379914, 0.929484} fitness 0.01
+		{0.334496, 0.832509} fitness 0.01
+		{0.96071, 0.470057}  fitness 0.01
+		... 12 more ...
+		{0.516274, 0.708208} fitness 0.01
+	\end{verbatim}
+	
 	
 	\subsection{Discussion of the results}
-	
+		
+	This basic trivial case confirms that we are indeed able to construct the hybrid fuzzy-genetic system which is able to produce optimal sequences of actions which lead to the goal state.
+		
 	Using the fuzzy controller came out more complicated than it could be seen from the theory alone.
 	While the target of the work was reducing the search state space, the amount of parameters in the fuzzy controller exploded the hyperparameters space instead, as by different configuration of the fuzzy rules and fuzzy variables we can change the behavior of the specimen.
 	
-	If we exclude the current state of the specimen from the fuzzy rules, we trivialize the trajectories, reducing them to repetition of the same action $T$ times.
+	It can be seen that if we exclude the current state of the specimen from the fuzzy rules, we trivialize the trajectories, reducing them to repetition of the same action $T$ times.
 	While this does not simplify the optimization step, as it is assumed that though (\ref{q<<n}), $q$ is still large enough for the bruteforce enumeration to be intractable, it leaves us with action sequences intuitively unfit as solutions for any realistic nontrivial goal states.
 	
 	If we setup the fuzzy action-prioritizing rules in such a way that they would indeed use the current state of the specimen, we do turn the problem into the control one with non-trivial solutions, but at the same time we end up having to specify not only at least one rule per each action priority, but also at least one rule per each \textit{term} per \textit{each input variable}, which starts competing with the complexity of the problem we are trying to solve by this method in the first place.
 	
 	In the discussion of reducing the dimensionality of the problem, one should not forget the actual issue which explodes the dimensionality of the problem.
 	While on the surface the method explored in this work is based on the inequality (\ref{q<<n}) and the amount of inclinations seems to be the target of discussions, the actual solution to the origin problem is a \textit{list of actions}, and the true reason for dimensionality explosion is the length $T$ of the list of actions to find and the amount of actions to be considered at each step.
+	
+	It also can be seen that the configuration of the fuzzy controller and a tiebreaking rule is paramount for getting the solution.
+	Intuitively by construction it can be expected that, if we set some ``Physical'' attribute as a goal, we expect that the specimen with high ``Physical Inclination'' and low ``Mental Inclination'' will be the only possible solution, but it's not the case.
+	
+	In the example results for the ``Strength must be higher than 0.07'' case above, we can see a winning specimen with ``Physical Inclination'' being as low as 0.379914 and ``Mental Inclination'' being as high as 0.929484,
+	which is a situation completely opposite to the expectations.
+	If we single-step the evolution process for this specimen, we can see that on the step of choosing an action it gets actions with identical priorities, but opposite effects.
+	
+	For a visual example, this is how the text report looks like if we introduce it in the program appropriately:
+	
+	\begin{verbatim}
+island champion: {0.379914, 0.929484}
+Step 1:
+Comparing Hunting with value 0.66665 and Lumberjack with value 0.33335
+Comparing Hunting with value 0.66665 and ScienceClass with value 0.66665
+Comparing Hunting with value 0.66665 and MannersClass with value 0.33335
+Chosen action: Hunting
+	\end{verbatim}
+	
+	Three following steps are not shown because they are identical to this one.
+	We can see that priorities of the ``Hunting'' and ``ScienceClass'' actions were inferred as identical,
+	and the ``Hunting'' action has been chosen solely by the reason of being the first in the list of actions compared to ``ScienceClass''.
+	
+	From one perspective we can see it as a deficiency in an algorithm and implement a more robust tiebreaker, but on the other hand we should not forget that the solution we seek is the list of actions leading to the goal state,
+	not the inclination values which are essentially transient intermediaries representing paths in the actions space.
 	
 	\section{Experiment 2: Base control case}
     
