@@ -1094,35 +1094,20 @@ Chosen action: Hunting
 	
 	\section{Experiment 2: Base control case}
     
-	4 characteristics, 12 actions, 100 steps.
+	24 characteristics, 25 actions, 100 steps.
 
 	This case is the base case, as it introduces enough complexity to test the proposed approach and at the same time compare it with classical approaches.
 
 	A decision tree of the size $12^{100}$ is already too large to be completely enumerated.
 
-	In this case we increase not only the purely numerical characteristics of the problem, but its complexity itself.
+	In this case we copy all the numerical attributes of the character sans one from the original Princess Maker 2 problem, and all the actions with their effects on these attributes.
 	
-	First, we will introduce two characteristics which were the core of the original \textit{Princess Maker} problem: money and stress.
-	These characteristics are resources which the player must manage effectively while scheduling the activity of the character.
-	Every action increases the stress.
-	Some actions increase money --- they are called ``jobs''.
-	Some actions decrease money --- they are called ``lessons''.
-	
-	Actions which decrease money become unavailable when there's not enough money.
-	When the stress reaches some boundary values, in the original game a series of events of increasing severity happen.
-	In this work we'll not model all this complexity.
-	Instead we'll maintain some boundary value of stress after which no actions would be selected except the ones decreasing it.
-	
-	Second, we will try modeling these restrictions completely as fuzzy rules.
-	In this case, the fuzzy controller would be thought of as ``predicting'' the problems instead of hitting them and backtracking.
-
-	However, with 4 characteristics and 12 actions, the problem is still well within the range where Reinforcement Learning methods—especially those using function approximation—can be applied efficiently.
 	The planning horizon of 100 steps is long enough to be non-trivial, but does not pose significant challenges for standard RL algorithms.
 
-
-	Managing money is a significant trick in the existing strategies for completing the actual \textit{The Princess Maker 2} game.
-	While the full real walkthrough for reaching the Queen ending relies heavily on the narrative events in the game which arbitrarily change the characteristics depending on the event itself, separately from the mechanic of scheduling the activities, the overall strategy is preparing the exact amount of money, pre-calculated beforehand, in the beginning, to use them in one go on all the required lessons and nothing else.
-	Fuzzy controller will not be able to replicate this behavior exactly, but the concept of ``inclinations'' is based on a hypothesis that we can emulate it by finding a character ``inclined'' in such a way to behave like that.
+	Imitating the full \textit{Princess Maker 2} run requires 1200 steps (``days'') which will be done in Experiment 3.
+	
+	% TODO: run this case with various T and plot a graph T versus runtime.
+	% prove that it's polynomial!
 	
 	\subsection{Discussion of the results}
 		(to be done)
@@ -1133,6 +1118,32 @@ Chosen action: Hunting
 
 	This case is an attempt to directly solve the original problem which started this work.
 	It will be used as a benchmark for the proposed solution on a real-world problem.
+
+	In this case we increase not only the purely numerical characteristics of the problem, but its complexity itself.
+
+First, we will introduce two characteristics which were the core of the original \textit{Princess Maker} problem: money and stress.
+These characteristics are resources which the player must manage effectively while scheduling the activity of the character.
+Every action increases the stress.
+Some actions increase money --- they are called ``jobs''.
+Some actions decrease money --- they are called ``lessons''.
+
+Actions which decrease money become unavailable when there's not enough money.
+When the stress reaches some boundary values, in the original game a series of events of increasing severity happen.
+In this work we'll not model all this complexity.
+Instead we'll maintain some boundary value of stress after which no actions would be selected except the ones decreasing it.
+
+
+Second, we will try modeling these restrictions completely as fuzzy rules.
+In this case, the fuzzy controller would be thought of as ``predicting'' the problems instead of hitting them and backtracking.
+
+In the original game effectiveness of the actions dependent on the current values of the attributes of the character.
+In addition to that, some of the actions --- jobs --- become available only starting from particular age, meaning, they should be unavailable until we reach a particular step number in the evolution of a single specimen.
+
+We will not implement these mechanics in the span of this work.
+
+	Managing money is a significant trick in the existing strategies for completing the actual \textit{The Princess Maker 2} game.
+While the full real walkthrough for reaching the Queen ending relies heavily on the narrative events in the game which arbitrarily change the characteristics depending on the event itself, separately from the mechanic of scheduling the activities, the overall strategy is preparing the exact amount of money, pre-calculated beforehand, in the beginning, to use them in one go on all the required lessons and nothing else.
+Fuzzy controller will not be able to replicate this behavior exactly, but the concept of ``inclinations'' is based on a hypothesis that we can emulate it by finding a character ``inclined'' in such a way to behave like that.
 
 	(to be done)
 	
