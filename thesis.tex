@@ -100,10 +100,11 @@
 	
 	A deterministic planning problem for a stateful agent is a classical and generic problem applicable to a variety of real-world problems.
 	However, it is also prone to a combinatorial explosion when the range of the actions to choose and the planning horizon (length of the sequence of actions to find) become sufficiently large.
+	Works like~\cite{WOS:001308319900003} cover both the real-world applications and a significance of the ``curse of dimensionality''.
 	
-	In this work we discuss an alternative approach of solving deterministic planning problems for stateful agents with large planning horizons and large action spaces, using a hybrid fuzzy-genetic system which relies on a domain knowledge to reduce the dimensionality.
+	In this work we will discuss an alternative approach of solving deterministic planning problems for stateful agents with large planning horizons and large action spaces, using a hybrid fuzzy-genetic system which relies on a domain knowledge to reduce the dimensionality.
 	
-	In this introduction section we'll set up the context of a problem to be solved and briefly cover the most obvious approaches to its solution.
+	In this introduction section we will set up the context of a problem to be solved and briefly cover the most obvious approaches to its solution.
 	Readers which don't require such an introduction can proceed directly to the section \ref{problem-statement}.
 	
 	\subsection{A game solver as a planning problem}
@@ -165,16 +166,19 @@
   
   This sounds exactly like the description of the solver we want to get.
   
-	We can directly use one of the modern numeric solvers, for example, ENHSP~\cite{enhsp::scala2020subgoaling}~\cite{enhsp::Scala2016IntervalBasedRF}.
+  	Stateful agent can be modeled using any of the modern automatic planners which support numeric fluents, for example, ENHSP~\cite{enhsp::scala2020subgoaling}~\cite{enhsp::Scala2016IntervalBasedRF}.
 	
 	This is proven to work on small-scale problems: the code repository of the ENHSP-20 solver~\footnote{https://github.com/hstairs/enhsp/tree/enhsp-20} has benchmarks with essentially 40 numeric parameters and 10 action choices.
 	
 	But the very nature of the automatic planners, namely, the intent to search for the shortest schedule reaching the goal, contradicts the problem we want to solve.
-	The Princess Maker problem dictates delayed evaluation of the goal state, we must execute a set amount of actions, and stay at the goal state at that time.
+	The \textit{Princess Maker} problem dictates delayed evaluation of the goal state, we must execute a set amount of actions, and stay at the goal state at that time.
 	More than that, as we define more rigorously in the section \ref{problem-statement}, there are no ``no-operation'' actions, we cannot ``do nothing'' to pad the actions sequence, and every action changes the state.
 	
 	So, while using the automatic planners almost perfectly matches our needs, this is not the goal of this work.
 	In addition to that, the problem of scale stays unexplored, namely, the specific Princess Maker problem is just an example of a large-scale planning problem which we want to explore in this work.
+	
+	Though, there exist works which directly tackle the problem of scale in the currently existing automatic planners, but using different approaches, namely, Linear Temporal Logic~\cite{LU2025121666}.
+	They don't focus specifically on numeric fluents, though.
 
   \subsubsection{Reinforcement learning}
 	Second, we can try applying the Reinforcement Learning~\cite{sutton2018reinforcement} to this problem.
@@ -1023,7 +1027,7 @@ pagmo::archipelago archi(16u, algo, prob, 20u);
 	Four arguments to the \texttt{pagmo::archipelago} constructor are number of islands, algorithm to use, problem to solve and size of the population on each island.
 	These are the slice of the hyperparameters which are related to evolutionary optimizations.
 	
-	The algorithm that has been chosen (\texttt{pagmo::sade}) is an instance of Self-adaptive Differential Evolution algorithm, jDE variant~\ref{sade_jDE}~\ref{sade_iDE}, for no reason other than being mentioned the first in the Pagmo documentation examples.
+	The algorithm that has been chosen (\texttt{pagmo::sade}) is an instance of Self-adaptive Differential Evolution algorithm, jDE variant~\cite{sade_jDE}~\cite{sade_iDE}, for no reason other than being mentioned the first in the Pagmo documentation examples.
 
 	Running this system with the above setup results in 16 islands all evolving to the specimen which successfully reach the goal.
 	
@@ -1166,10 +1170,12 @@ Fuzzy controller will not be able to replicate this behavior exactly, but the co
 
 	In the span of this work, only three distinct cases were explored, and the more thorough exploration of the parameter space is left for a dissertation-level research.
 
+	The proof-of-concept solver implemented and discussed in this work is obviously an instance of an automated planner, for which an extensive framework of both machinery and benchmarking exists.
+	The logical next step would be to determine a correct place of this method in the existing body of knowledge about the automated planners and perform formal comparisons of performance with some other state-of-the-art methods.
+
+	Another work which exploits the idea of using the domain knowledge in the solution process exists, but it uses the Linear Temporal Logic instead, and utilizes the existing PDDL automatic planning machinery~\cite{LU2025121666}.
+
 	The paper~\cite{song2023rl_ea} briefly mentioned in the section \ref{section::evolutionary}, is an possible alternative hybrid system, where the target of evolution is a reinforcement learning process.
-
-
-
 
 	\printbibliography
 
