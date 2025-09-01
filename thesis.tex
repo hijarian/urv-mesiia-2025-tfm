@@ -172,7 +172,7 @@
   
   	Stateful agent can be modeled using any of the modern automatic planners which support numeric fluents, for example, ENHSP~\cite{enhsp::scala2020subgoaling}~\cite{enhsp::Scala2016IntervalBasedRF}.
 	
-	This is proven to work on small-scale problems: the code repository of the ENHSP-20 solver~\footnote{https://github.com/hstairs/enhsp/tree/enhsp-20} has benchmarks with essentially 40 numeric parameters and 10 action choices.
+	This is proven to work on small-scale problems: the code repository of the ENHSP-20 solver~\footnote{\url{https://github.com/hstairs/enhsp/tree/enhsp-20}} has benchmarks with essentially 40 numeric parameters and 10 action choices.
 	
 	But the very nature of the automatic planners, namely, the intent to search for the shortest schedule reaching the goal, contradicts the problem we want to solve.
 	The \textit{Princess Maker} problem dictates delayed evaluation of the goal state, we must execute a set amount of actions, and stay at the goal state at that time.
@@ -193,7 +193,7 @@
 	The issue of scale is the main obstacle in this case.
 
 	The origin problem of solving Princess Maker 2, described in the previous subsection,  assumes 27 actions over a state space of 23 numeric characteristics each one having values between 0 and 500.
-	Just enumerating the possible states of the agent caused by these actions in the state space of such a size is an intractable problem, which we will rigorously show in \ref{methodology}.
+	Just enumerating the possible states of the agent caused by these actions in the state space of such a size is an intractable problem, which we will try to rigorously show in the chapter~\ref{methodology}.
 	Naively, a tabular representation of the reward function or Q-function would require a table of size $27 \times 500^{23}$, which is already practically intractable.
 	
 	Moreover, the most important problem is the length of the process.
@@ -203,7 +203,7 @@
 	\chapter{Formal problem statement}\label{problem-statement}
 
 	As follows from the section~\ref{introduction:assessment}, formally we have a choice of whether to treat this as a planning problem or a control problem.
-	Despite Reinforcement learning not being fit for our cause, we will still approach our origin problem as a control problem, as it allows us to formally introduce our solution approach later in the section~\ref{section::solution}.
+	Despite Reinforcement learning not being fit for our cause, we will still approach our origin problem as a control problem, as it allows us to formally introduce our solution approach later in the chapter~\ref{section::solution}.
 
 	\section{Actor behavior as a control problem}
 
@@ -276,8 +276,8 @@
 	In this work we'll focus specifically on the cases which lead to combinatorial explosion for classical solutions, that is, when we have sufficiently large amount of characteristics, actions to choose from and most importantly, very large planning horizon:
 	
 	\begin{eqnarray}
-		n > 50 \\
-		m > 20 \\
+		n > 25 \\
+		m > 24 \\
 		T > 360
 	\end{eqnarray}
 	
@@ -291,9 +291,9 @@ Classical reinforcement learning methods become intractable in this domain due t
 
 To address this, we introduce a heuristic dimensionality reduction via the concept of inclinations — latent behavioral parameters — and model the behavior policy as a fuzzy controller which maps the current state and inclinations to a concrete action.
 
-This parametrization constrains the space of possible behaviors, making the optimization tractable. Instead of learning or searching over action sequences directly, we perform optimization in the significantly smaller space of inclinations, evaluating the final outcome after $T$ steps. The resulting problem becomes an offline, black-box control task — suitable for evolutionary algorithms, rather than classical RL methods.
+This parametrization constrains the space of possible behaviors, making the optimization tractable. Instead of learning or searching over action sequences directly, we perform optimization in the significantly smaller space of inclinations, evaluating the final outcome after $T$ steps. The resulting problem becomes an offline, black-box control task — suitable for evolutionary algorithms, rather than classical RL or automatic planning methods.
 
-	\section{Using domain knowledge to reduce dimensionality}
+	\section{Using the domain knowledge to reduce dimensionality}
 
 	In this work we evaluate an approach which is defined as follows.
 	
@@ -308,7 +308,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 	
 	\begin{eqnarray}
 		\mathbf{I} \in \mathbb{Z}^q\\
-		q << n \label{q<<n}
+		q \llless n \label{q<<n}
 	\end{eqnarray}
 
 	From this, we can define a set of fuzzy rules\cite{ray2014softcomputing} mapping the inclinations to action choices:
@@ -345,10 +345,10 @@ This parametrization constrains the space of possible behaviors, making the opti
 		
 	We can find $\arg \max(g)$ now using an appropriate optimization method.
 	For this work, because of a strong biosocial analogies a genetic algorithm\cite{mitchell1999geneticalgorithms} was chosen,
-	with the vector of inclinations $\mathbf{I}$ as a chromosome.
+	with the vector of inclinations $\mathbf{I}$ as a chromosome (every inclination value being a separate gene).
 	
 	\section{Hypothesis}
-	The hypothesis explored in this work is that the combination of assumptions described above constructs an heuristic which allows finding a locally optimal solution in a polynomial time.
+	The hypothesis explored in this work is that the combination of assumptions described above constructs an heuristic which allows finding a locally optimal solution for the problem defined in chapter~\ref{problem-statement} in a polynomial time.
 	
 	\section{Objectives}\label{section::objectives}
 	
@@ -364,12 +364,12 @@ This parametrization constrains the space of possible behaviors, making the opti
 		\item\label{goal::conclusions} Analyze the results to draw conclusions about the effectiveness of the approach.
 	\end{enumerate}
 
-	Goal~\ref{goal::formal-problem-statement} has been reached in the section~\ref{problem-statement}.
+	An objective~\ref{goal::formal-problem-statement} has been reached in the chapter~\ref{problem-statement}.
 	
-	As soon as our solver will be able to produce solutions with the fitness representing reaching the goal state, goal~\ref{goal::working-solver} will be considered reached.
+	As soon as our solver will be able to produce solutions with the fitness representing reaching the goal state, an objective~\ref{goal::working-solver} will be considered reached.
 	
-	Goal~\ref{goal::performance-evaluation} is covered by the sections~\ref{trivial-case},~\ref{section::control-case} and~\ref{section::origin-case}.
-	Finally, section~\ref{section::conclusions} covers the analysis of the results and conclusions about its applicability.
+	An objective~\ref{goal::performance-evaluation} is covered by the chapters~\ref{trivial-case} and~\ref{section::control-case}.
+	Finally, chapter~\ref{section::conclusions} covers the analysis of the results and conclusions about its applicability.
 	
 	\chapter{Methodology}\label{methodology}
 
@@ -456,7 +456,7 @@ This parametrization constrains the space of possible behaviors, making the opti
     \item Applies defuzzification to the output fuzzy variables, obtaining their strict values.
   \end{enumerate}
 
-  The above algorithm is called a \textbf{Mamdani fuzzy controller} and it's the one which we'll use in this work.
+  The above algorithm is called a \textbf{Mamdani fuzzy controller}~\cite{fuzzy::Mamdani} and it's the one which we'll use in this work.
 
   In our system, we're going to have the vector of inclinations and the current state of the specimen as input variables for the controller,
   and have the priorities of actions as the output variables.
@@ -539,14 +539,14 @@ This parametrization constrains the space of possible behaviors, making the opti
 	Contemporary C++, starting with the standard version 20, allows for a very high-level code as readable as a natural language.
   It also has libraries for both the fuzzy logic~\cite{fl::fuzzylite} and evolutionary computations~\cite{Biscani2020} for us to not implement any of them from scratch.
 
-	In talking on choice of the language for the implementation we cannot avoid comparisons with Python, assumed leader and language of choice for scientific experiments.
-	As has been stated above, it has been conscious decision to trade the ability to make rapid changes in the code, especially the ability to run convenient machinery like Jupyter notebooks, for the raw processing power.
+	In talking on choice of the language for the implementation we cannot avoid comparisons with Python~\footnote{\url{https://www.python.org/}}, assumed leader and language of choice for scientific experiments.
+	As has been stated above, it has been conscious decision to trade the ability to make rapid changes in the code, especially the ability to run convenient machinery like Jupyter notebooks~\footnote{\url{https://jupyter.org/}}, for the raw processing power.
 	This is because the C++20 and later is expressive enough to be as readable as Python sans some of the required syntax boilerplate, and in reality the most painful part of choosing C++ is building the program to be cross-platform, as Python programs are, and doing that with the code which uses third-party libraries is a nontrivial implementation problem.
 
 	\section{Fuzzylite library for the fuzzy controller implementation}\label{fuzzy-implementation}
 
 	This work turned out to be more or less an assessment of usefulness of the \texttt{fuzzylite}~\cite{fl::fuzzylite} C++ library in addition to the main goal.
-	While being fully open sourced with a non-restrictive license terms, actually adding it to an existing C++ program is a task certainly not feasible for an arbitrary computer scientist not being the seasoned software engineer at the same time.
+	While being fully open sourced with a non-restrictive license terms, actually adding it to an existing C++ program is a task certainly not feasible for an arbitrary computer scientist not being a seasoned software engineer at the same time.
 	Which is a shame, as it offers a straightforward idiomatic API which allows expressing the algorithms in a readable format.
 
 	\texttt{fuzzylite} also provides a domain-specific language for specifying the fuzzy controller, which allows us to describe this part of the algorithm in a language more expressive than the raw C++ function calls.
@@ -696,10 +696,11 @@ struct pm_problem {
 	
 	In the example above, we declare that every specimen is a vector of two real values between $0$ and $1$ inclusive.
 	This is the setup for the ``Trivial case'' experiment from the section~\ref{trivial-case}.
+	Every element of the vector would be used as an inclination value in the fuzzy inference stage.
 	Depending on the amount of inclination values we require, we specify vectors of according length as return values of this function.
 	
 	The function \textbf{\texttt{fitness}} calculates the fitness value of the given specimen.
-	In a classical evolutionary optimization problems, this fitness function is the pure mathematical function easy to calculate, so the algorithm itself presents the main computational challenge for the computing device.
+	In a classical evolutionary optimization problems, this fitness function is a pure mathematical function easy to calculate, so the algorithm itself presents the main computational challenge for the computing device.
 	In our problem, however, this function contains the implementation of the control loop described in the section~\ref{fitness}.
 	
 	\begin{lstlisting}[language=c++]
@@ -718,7 +719,7 @@ pagmo::vector_double fitness(const pagmo::vector_double& dv) const
 	
 	\begin{enumerate}
 		\item converts the specimen from the raw data provided by Pagmo to the vector of inclinations we use in our fuzzy controller. For simplicity the mapping is direct: values of genes and values of inclinations both belong to $[0, 1] \in \mathbb{R}$.
-		\item initializes the fuzzy controller
+		\item initializes the fuzzy controller~\footnote{In the final implementation of the solver, initialization of the engine is performed in a more optimized way, only once at the launch of the program. Instead of initializing the fuzzy controller every time for each instance of the problem in a highly parallel Pagmo run, we make an individual copy of the already prepared controller for each specimen to use.}
 		\item runs the full simulation
 	\end{enumerate}
 	
@@ -1440,6 +1441,8 @@ rule: if InclinationHousekeeping is high then MannersClass is low
 		\item it has been determined that the speed of convergence is actually dependent on the complexity of the fitness function calculation;
 	\end{enumerate}
 	
+	The codebase of the reference solver is located at the GitHub repository in the Internet accessible by the URL \url{https://github.com/hijarian/urv-mesiia-2025-tfm-code}.
+	
 	With this, our objectives stated in the section~\ref{section::objectives} has been reached and we can give a brief summary on the further research spanning outside the scope of this particular work.
 	
 	A game so mechanically interdependent as \textit{Princess Maker 2} is too complex to solve using such a straightforward model.
@@ -1452,6 +1455,9 @@ rule: if InclinationHousekeeping is high then MannersClass is low
 	However, a research on how the computational complexity of this solver depends on amount of attributes $n$~(\ref{definitions:attributes-amount}) and amount of actions $m$~(\ref{definitions:actions-amount}) is still needed to be done.
 
 	In the span of this work, only two cases distinct in the number of actions $m$ were explored, and the more thorough exploration of the parameter space is left for a dissertation-level research.
+	
+	An additional path of exploration is researching how well this method can be applied to problems where the effects of actions are non-deterministic.
+	While lifting the restriction of determinism does not affect the fuzzy inference at all, it presents challenges in decoding the solution sequence of actions from the vector of inclination values.
 	
 	Now, first, let us make a conclusion tangential to the origin problem but related to the chosen theoretical toolset.
 	While the fuzzy controller can indeed be seen as a tool to formalize the decision making using the expert knowledge in the given domain, it is too complicated mechanism \textit{by itself} to help reducing the complexity of the problem it's solving.
