@@ -1,4 +1,4 @@
-\documentclass[12pt, a4paper]{article}
+\documentclass[12pt, a4paper]{report}
 %\usepackage[utf8]{inputenc} 
 \usepackage{fullpage}
 \usepackage{amssymb}
@@ -28,6 +28,10 @@
 \newcommand\YAMLcolonstyle{\color{red}\mdseries}
 \newcommand\YAMLkeystyle{\color{black}\bfseries\smallfont}
 \newcommand\YAMLvaluestyle{\color{blue}\mdseries}
+
+% Landscape-oriented tables
+\usepackage{rotating}
+\usepackage{booktabs}
 
 \makeatletter
 
@@ -96,7 +100,7 @@
 	
 	\tableofcontents
 	
-	\section{Introduction}
+	\chapter{Introduction}
 	
 	A deterministic planning problem for a stateful agent is a classical and generic problem applicable to a variety of real-world problems.
 	However, it is also prone to a combinatorial explosion when the range of the actions to choose and the planning horizon (length of the sequence of actions to find) become sufficiently large.
@@ -107,7 +111,7 @@
 	In this introduction section we will set up the context of a problem to be solved and briefly cover the most obvious approaches to its solution.
 	Readers which don't require such an introduction can proceed directly to the section \ref{problem-statement}.
 	
-	\subsection{A game solver as a planning problem}
+	\section{A game solver as a planning problem}
 
 	In 1993 in Japan Studio Gainax released a computer game called \textit{Princess Maker 2}.
 	The game essentially defined a so-called ``life simulation'' genre.
@@ -144,20 +148,20 @@
 	As the result of this simplification, we are left over with a deterministic planning problem, which nevertheless has a significant scale, because in the Princess Maker 2 game there are:
 	
 	\begin{enumerate}
-		\item 50 numerical attributes of a character
-		\item 25 possible actions to schedule
-		\item the end state is evaluated and compared to the goal after 360 action steps.
+		\item 23 numerical attributes of a character
+		\item 27 possible actions to schedule
+		\item the end state is evaluated and compared to the goal after effectively 3650 action steps (10 ``years'' of 365 ``days'' one action per day) (the actual in-gameplay scheduling happens in batches of 10 actions to shorten the game but we don't have to follow that exactly).
 	\end{enumerate}
 
 	This presents a significant challenge to classic algorithms.
 	
 	At the same time, because this problem is so generic, any progress in finding an efficient solution to it is beneficial to multiple areas.
 	
-	\subsection{Existing methods assessment}\label{introduction:assessment}
+	\section{Existing methods assessment}\label{introduction:assessment}
 
 	There are two approaches which are deceptively obvious choices to solve this problem, namely, automatic planning theory~\cite{fikes1971strips} and reinforcement learning~\cite{sutton2018reinforcement}.
 	
-  \subsubsection{Automatic planning theory}
+  \subsection{Automatic planning theory}
   
   To quote the foundational STRIPS paper:
   
@@ -180,7 +184,7 @@
 	Though, there exist works which directly tackle the problem of scale in the currently existing automatic planners, but using different approaches, namely, Linear Temporal Logic~\cite{LU2025121666}.
 	They don't focus specifically on numeric fluents, though.
 
-  \subsubsection{Reinforcement learning}
+  \subsection{Reinforcement learning}
 	Second, we can try applying the Reinforcement Learning~\cite{sutton2018reinforcement} to this problem.
 	The choice of this optimization method is deceptively obvious, because at a glance, the problem looks like a perfect match for it.
 	We have an agent, which has a state, and this agent can perform actions which change the state.
@@ -188,29 +192,30 @@
 	
 	The issue of scale is the main obstacle in this case.
 
-	The origin problem of solving Princess Maker 2, described in the previous subsection,  assumes 25 actions over a state space of 50 numeric characteristics each one having values between 0 and 500.
+	The origin problem of solving Princess Maker 2, described in the previous subsection,  assumes 27 actions over a state space of 23 numeric characteristics each one having values between 0 and 500.
 	Just enumerating the possible states of the agent caused by these actions in the state space of such a size is an intractable problem, which we will rigorously show in \ref{methodology}.
-	Just the rewards table for this has a size of $25 \times 500^{50}$, which is already practically intractable.
+	Naively, a tabular representation of the reward function or Q-function would require a table of size $27 \times 500^{23}$, which is already practically intractable.
 	
 	Moreover, the most important problem is the length of the process.
 	Following the base example of \textit{Princess Maker 2} gameplay, player makes 3 choices per virtual ``month'', and the game spans 10 ``years'', so the search space is a tree $3 \times 12 \times 10 = 360$ levels deep.
+	If we diverge from this gameplay simplification and perform a full day-by-day scheduling the depth of the tree becomes exponentially larger.
 	
-	\section{Formal problem statement}\label{problem-statement}
+	\chapter{Formal problem statement}\label{problem-statement}
 
 	As follows from the section~\ref{introduction:assessment}, formally we have a choice of whether to treat this as a planning problem or a control problem.
-	Despite Reinforcement learning not being fit for our cause, we will still approach our origin problem as a control problem, as it allows us to formally introduce our solution approach later in~\ref{section::solution}.
+	Despite Reinforcement learning not being fit for our cause, we will still approach our origin problem as a control problem, as it allows us to formally introduce our solution approach later in the section~\ref{section::solution}.
 
-	\subsection{Actor behavior as a control problem}
+	\section{Actor behavior as a control problem}
 
 	Assuming we have a character described as a set of numeric characteristics
 	
-	\begin{equation}
+	\begin{equation}\label{definitions:attributes-amount}
 		\mathbf{x} \in \mathbb{Z}^n
 	\end{equation}
 	
 	we have a set of possible actions
 	
-	\begin{equation}
+	\begin{equation}\label{definitions:actions-amount}
 		A = \{a_1, a_2,\ldots, a_m\}
 	\end{equation}
 	
@@ -254,7 +259,7 @@
 	
 	The transfer function $f$ is assumed to be completely determined, and the whole process being non-stochastic. This is a significant restriction which cannot be lifted for the proposed solution to work.
 
-	\subsection{Dimensionality explosion stemming from the original context}
+	\section{Dimensionality explosion stemming from the original context}
 
 	We assume a fixed-length trajectory of $𝑇$ actions, each of which transforms the state of the system according to a known deterministic transfer function~(\ref{definitions:transfer-function}).
 
@@ -280,7 +285,7 @@
 
 	With these restrictions in place, a need in an heuristic arises to perform efficient search in the state space, as its size becomes unrealistically large.
 	
-	\section{Proposed solution approach}\label{section::solution}
+	\chapter{Proposed solution approach}\label{section::solution}
 
 Classical reinforcement learning methods become intractable in this domain due to the high dimensionality of the state space, large action set, and long planning horizon. Moreover, the inability to halt or take neutral actions further exacerbates the combinatorial explosion of the trajectory space.
 
@@ -288,7 +293,7 @@ To address this, we introduce a heuristic dimensionality reduction via the conce
 
 This parametrization constrains the space of possible behaviors, making the optimization tractable. Instead of learning or searching over action sequences directly, we perform optimization in the significantly smaller space of inclinations, evaluating the final outcome after $T$ steps. The resulting problem becomes an offline, black-box control task — suitable for evolutionary algorithms, rather than classical RL methods.
 
-	\subsection{Using domain knowledge to reduce dimensionality}
+	\section{Using domain knowledge to reduce dimensionality}
 
 	In this work we evaluate an approach which is defined as follows.
 	
@@ -342,26 +347,35 @@ This parametrization constrains the space of possible behaviors, making the opti
 	For this work, because of a strong biosocial analogies a genetic algorithm\cite{mitchell1999geneticalgorithms} was chosen,
 	with the vector of inclinations $\mathbf{I}$ as a chromosome.
 	
-	\subsection{Hypothesis}
+	\section{Hypothesis}
 	The hypothesis explored in this work is that the combination of assumptions described above constructs an heuristic which allows finding a locally optimal solution in a polynomial time.
 	
-	\subsection{Objectives}
-	The objective of this thesis is to investigate whether the stated hypothesis is true.
+	\section{Objectives}\label{section::objectives}
+	
+	This is a foundational work which proves a concept.
+	
 	That is, whether a fuzzy-genetic heuristic can effectively solve high-dimensional deterministic planning problems through dimensionality reduction and symbolic reasoning.
 	
 	In particular, we aim to:
 	\begin{enumerate}
-		\item Formalize the problem as an optimization task.
-		\item Implement a working solver.
-		\item Evaluate the performance of the solver on a set of test cases of increasing complexity.
-		\item Analyze the results to draw conclusions about the effectiveness of the approach.
+		\item\label{goal::formal-problem-statement} Formalize the problem as an optimization task.
+		\item\label{goal::working-solver} Implement a working solver.
+		\item\label{goal::performance-evaluation} Evaluate the performance of the solver on a set of test cases of increasing complexity.
+		\item\label{goal::conclusions} Analyze the results to draw conclusions about the effectiveness of the approach.
 	\end{enumerate}
 
-	\section{Methodology}\label{methodology}
+	Goal~\ref{goal::formal-problem-statement} has been reached in the section~\ref{problem-statement}.
+	
+	As soon as our solver will be able to produce solutions with the fitness representing reaching the goal state, goal~\ref{goal::working-solver} will be considered reached.
+	
+	Goal~\ref{goal::performance-evaluation} is covered by the sections~\ref{trivial-case},~\ref{section::control-case} and~\ref{section::origin-case}.
+	Finally, section~\ref{section::conclusions} covers the analysis of the results and conclusions about its applicability.
+	
+	\chapter{Methodology}\label{methodology}
 
   In this section we will discuss the theory which this work is build upon, namely, fuzzy logic~\cite{ray2014softcomputing} and evolutionary algorithms~\cite{mitchell1999geneticalgorithms}.
 
-	\subsection{Encoding domain knowledge of actions as a fuzzy controller}
+	\section{Encoding domain knowledge of actions as a fuzzy controller}
 
   Normally the Fuzzy logic is being explained from the fuzzy set theory by L. Zadeh~\cite{zadeh1965fuzzy}, but for this particular work the most important part of the fuzzy logic is the fuzzy rules for the fuzzy controller so it's more beneficial to start with them.
 
@@ -413,11 +427,12 @@ This parametrization constrains the space of possible behaviors, making the opti
 
   It specifies three \textit{fuzzy terms} for the numeric property ``Strength'', which can have integer ``strict'' values from 0 to 100.
   Thus, when we measure this property and provide a strict value for ``Strength'', we can determine the values of \textit{membership functions} of its three \textit{fuzzy terms}.
-  For example, if
-    $V = 72$
-  then
-    $T = \left(\left(``Low'', f_l(72) \right), \left(``Acceptable'', f_a(72) \right), \left(``High'', f_h(72)\right)\right)$
-
+  For example, if $V = 72$ then
+  
+  \begin{equation}
+    T = \left(\left(``Low'', f_l(72) \right), \left(``Acceptable'', f_a(72) \right), \left(``High'', f_h(72)\right)\right)
+  \end{equation}
+  
   Which should be interpreted as ``Strength'' of 72 being at the same time $f_l(72)$ ``Low'', $f_a(72)$ ``Acceptable'' and $f_h(72)$ ``High''.
 
   The process of calculating the values of membership functions for all the terms of a linguistic variable given its strict value is called \textbf{fuzzification} of this value.
@@ -459,7 +474,7 @@ This parametrization constrains the space of possible behaviors, making the opti
   for example, if the actions would be allowed to make randomized changes to the specimen's state, that is, if the transfer function would not be pure.
   It opens up the possibilities to explore this topic further in the later works.
 
-	\subsection{Control feedback loop as a fitness function}\label{fitness}
+	\section{Control feedback loop as a fitness function}\label{fitness}
 
 	A single trajectory in the action space is explored using the following process.
 
@@ -474,13 +489,13 @@ This parametrization constrains the space of possible behaviors, making the opti
   It is important to understand that the state of a specimen is a transient value, used only for calculations of the final fitness after $T$ iterations.
   The solution we seek is fully encoded in the inclinations vector $\mathbf{I}$, which stays unchanged for the entirety of the control loop.
 
-	\subsection{Global optimization using an evolutionary algorithm}\label{section::evolutionary}
+	\section{Global optimization using an evolutionary algorithm}\label{section::evolutionary}
 
 	Strong biosocial analogies and the configuration of the control loop from~\ref{fitness} suggest us to use the evolutionary algorithms~\cite{song2023rl_ea}~\cite{beyer2002evolution_strategies} for optimization.
 	This is what would be used in this work.
 	However, in principle, any algorithm which is able to use the concept of a fitness function would be applicable here.
 
-  Evolutionary algorithms can be explained with an example of the so-called Simple Genetic Algorithm~\footnote{https://esa.github.io/pagmo2/docs/cpp/algorithms/sga.html}.
+  Evolutionary algorithms can be explained with an example of the so-called Simple Genetic Algorithm~\footnote{\url{https://esa.github.io/pagmo2/docs/cpp/algorithms/sga.html}}.
 
   SGA operates on the set of \textbf{specimens}, each one being a single option in the search space to explore.
   A specimen is classically a list of characters, which is called literally a \textbf{genome}.
@@ -513,11 +528,11 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	The library Pagmo \cite{Biscani2020} includes a lot of already implemented different evolutionary algorithms apart from the simple genetic algorithm so it enables us easier exploration of possibilities in optimizing the full solver.
 
-	\section{Implementation}
+	\chapter{Implementation}
 
 	The technical implementation of the method is performed in C++~\cite{ppp3} using the libraries FuzzyLite~\cite{fl::fuzzylite} and Pagmo~\cite{Biscani2020}
 
-	\subsection{Choice of a C++ language as foundation}
+	\section{Choice of a C++ language as foundation}
 
 	As the root problem of this work is the problem of scale, it has been decided that we trade comfort of experimentation for pure processing power.
 
@@ -528,7 +543,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 	As has been stated above, it has been conscious decision to trade the ability to make rapid changes in the code, especially the ability to run convenient machinery like Jupyter notebooks, for the raw processing power.
 	This is because the C++20 and later is expressive enough to be as readable as Python sans some of the required syntax boilerplate, and in reality the most painful part of choosing C++ is building the program to be cross-platform, as Python programs are, and doing that with the code which uses third-party libraries is a nontrivial implementation problem.
 
-	\subsection{Fuzzylite library for the fuzzy controller implementation}\label{fuzzy-implementation}
+	\section{Fuzzylite library for the fuzzy controller implementation}\label{fuzzy-implementation}
 
 	This work turned out to be more or less an assessment of usefulness of the \texttt{fuzzylite}~\cite{fl::fuzzylite} C++ library in addition to the main goal.
 	While being fully open sourced with a non-restrictive license terms, actually adding it to an existing C++ program is a task certainly not feasible for an arbitrary computer scientist not being the seasoned software engineer at the same time.
@@ -549,7 +564,7 @@ This parametrization constrains the space of possible behaviors, making the opti
     term: highest Ramp 0.670 1.000
   \end{lstlisting}
 
-  Base syntax of this DSL is essentially YAML~\footnote{https://yaml.org/}.
+  Base syntax of this DSL is essentially YAML~\footnote{\url{https://yaml.org/}}.
 
   At the first line we specify the name of the variable and whether it will be used as an input or an output for the fuzzy rules.
   Among the properties of the variable we have the numerical range of strict values for it, supplementary flags \texttt{enabled} and \texttt{lock-range} not interesting at this moment
@@ -619,7 +634,7 @@ This parametrization constrains the space of possible behaviors, making the opti
   \texttt{RuleBlock} declaration specifies what is the exact variant of fuzzy controller we are going to use, the Mamdani~\cite{fuzzy::Mamdani} one or Sugeno~\cite{fuzzy::Sugeno} one.
   In the scope of this work we will be using Mamdani controllers exclusively.
 
-	\subsection{Pagmo library for evolutionary computations}
+	\section{Pagmo library for evolutionary computations}
 
 	Authors of the Pagmo library designed a very high-level API for the evolutionary computation, which can be completely summarized in the following code snippet:
 	
@@ -656,7 +671,7 @@ for (const auto& isl : archi)
 	
 	After we run an evolution, we can visit every island and check the final result of the population evolution, including getting the best specimen, called ``champion'' in Pagmo.
 	
-	\subsection{Implementing the method using fuzzylite and pagmo libraries}\label{section::implementation}
+	\section{Implementing the method using fuzzylite and pagmo libraries}\label{section::implementation}
 	
 	To implement our solver in this computational framework, first we need to declare our own ``problem'' class compatible with \texttt{pagmo::problem} class requirements.
 	
@@ -848,7 +863,7 @@ double fitness(const Stats& stats)
 
 	This completes the full code for the solver.
 	
-	\subsection{Using the implemented solver}
+	\section{Using the implemented solver}
 	
 	Internal beauty of the code and external configurability were not the goals of the implementation, so to prepare the solver for the given problem a set of changes has to be done to the code itself.
 	
@@ -881,7 +896,7 @@ double fitness(const Stats& stats)
 	
 	Having corrected the code to specify all the above settings, the code for solver just compiles and runs as an executable without any arguments.
 	
-	\section{Experiment 1: Trivial case}\label{trivial-case}
+	\chapter{Experiment 1: Trivial case}\label{trivial-case}
 
 	First case has been used solely for assessing the possibility of constructing the system at all.
 	It is too small to be a useful example of problems solvable by the proposed solver.
@@ -993,14 +1008,22 @@ RuleBlock: mamdani
 	disjunction: Maximum
 	implication: AlgebraicProduct
 	activation: General
-	rule: if PhysicalInclination is low  and MentalInclination is low    then MannersClass is high
-	rule: if PhysicalInclination is low  and MentalInclination is low    then Hunting is low
-	rule: if MentalInclination is high   and PhysicalInclination is low  then ScienceClass is high
-	rule: if MentalInclination is high   and PhysicalInclination is low  then Lumberjack is low
-	rule: if PhysicalInclination is high and MentalInclination is low    then Lumberjack is high
-	rule: if PhysicalInclination is high and MentalInclination is low    then ScienceClass is low
-	rule: if MentalInclination is high   and PhysicalInclination is high then Hunting is high
-	rule: if MentalInclination is high   and PhysicalInclination is high then MannersClass is low
+	rule: if PhysicalInclination is low  and MentalInclination is low
+		     then MannersClass is high
+	rule: if PhysicalInclination is low  and MentalInclination is low    
+			 then Hunting is low
+	rule: if MentalInclination is high   and PhysicalInclination is low  
+			 then ScienceClass is high
+	rule: if MentalInclination is high   and PhysicalInclination is low  
+			 then Lumberjack is low
+	rule: if PhysicalInclination is high and MentalInclination is low    
+			 then Lumberjack is high
+	rule: if PhysicalInclination is high and MentalInclination is low    
+			 then ScienceClass is low
+	rule: if MentalInclination is high   and PhysicalInclination is high 
+			 then Hunting is high
+	rule: if MentalInclination is high   and PhysicalInclination is high 
+		     then MannersClass is low
 	\end{lstlisting}
 	
 	Correspondingly, the goal state is expressed as the following fitness function:
@@ -1056,7 +1079,7 @@ pagmo::archipelago archi(16u, algo, prob, 20u);
 	\end{verbatim}
 	
 	
-	\subsection{Discussion of the results}
+	\section{Discussion of the results}
 		
 	This basic trivial case confirms that we are indeed able to construct the hybrid fuzzy-genetic system which is able to produce optimal sequences of actions which lead to the goal state.
 		
@@ -1096,87 +1119,359 @@ Chosen action: Hunting
 	From one perspective we can see it as a deficiency in an algorithm and implement a more robust tiebreaker, but on the other hand we should not forget that the solution we seek is the list of actions leading to the goal state,
 	not the inclination values which are essentially transient intermediaries representing paths in the actions space.
 	
-	\section{Experiment 2: Base control case}
+	\chapter{Experiment 2: Base control case}\label{section::control-case}
     
-	24 characteristics, 25 actions, 100 steps.
+	24 characteristics, 25 actions with varied amount of steps.
 
 	This case is the base case, as it introduces enough complexity to test the proposed approach and at the same time compare it with classical approaches.
 
-	A decision tree of the size $12^{100}$ is already too large to be completely enumerated.
+	A decision tree of the size $25^{100}$ is already too large to be completely enumerated, and as we show later in this section, we go twelve times deeper than that.
 
-	In this case we copy all the numerical attributes of the character sans one from the original Princess Maker 2 problem, and all the actions with their effects on these attributes.
+	In this case we copy all the numerical attributes of the character sans one from the original \textit{Princess Maker 2} problem, and all the actions with their effects on these attributes.
 	
-	The planning horizon of 100 steps is long enough to be non-trivial, but does not pose significant challenges for standard RL algorithms.
-
-	Imitating the full \textit{Princess Maker 2} run requires 1200 steps (``days'') which will be done in Experiment 3.
+	The attributes are represented as the following tuple:
 	
-	% TODO: run this case with various T and plot a graph T versus runtime.
-	% prove that it's polynomial!
+	\begin{lstlisting}
+using Stats = std::tuple<
+	int, //0 strength
+	int, // constitution
+	int, // intelligence
+	int, // refinement
+	int, //4 charisma
+	int, // morality
+	int, // faith
+	int, // sin
+	int, // sensitivity
 	
-	\subsection{Discussion of the results}
-		(to be done)
-		
-	\section{Experiment 3: Origin case}
-
-	The complete Princess Maker 2 case is a problem with 50 numeric characteristics of a character and 25 actions to choose from, with a planning horizon of 360 steps.
-
-	This case is an attempt to directly solve the original problem which started this work.
-	It will be used as a benchmark for the proposed solution on a real-world problem.
-
-	In this case we increase not only the purely numerical characteristics of the problem, but its complexity itself.
-
-First, we will introduce two characteristics which were the core of the original \textit{Princess Maker} problem: money and stress.
-These characteristics are resources which the player must manage effectively while scheduling the activity of the character.
-Every action increases the stress.
-Some actions increase money --- they are called ``jobs''.
-Some actions decrease money --- they are called ``lessons''.
-
-Actions which decrease money become unavailable when there's not enough money.
-When the stress reaches some boundary values, in the original game a series of events of increasing severity happen.
-In this work we'll not model all this complexity.
-Instead we'll maintain some boundary value of stress after which no actions would be selected except the ones decreasing it.
-
-
-Second, we will try modeling these restrictions completely as fuzzy rules.
-In this case, the fuzzy controller would be thought of as ``predicting'' the problems instead of hitting them and backtracking.
-
-In the original game effectiveness of the actions dependent on the current values of the attributes of the character.
-In addition to that, some of the actions --- jobs --- become available only starting from particular age, meaning, they should be unavailable until we reach a particular step number in the evolution of a single specimen.
-
-We will not implement these mechanics in the span of this work.
-
-	Managing money is a significant trick in the existing strategies for completing the actual \textit{The Princess Maker 2} game.
-While the full real walkthrough for reaching the Queen ending relies heavily on the narrative events in the game which arbitrarily change the characteristics depending on the event itself, separately from the mechanic of scheduling the activities, the overall strategy is preparing the exact amount of money, pre-calculated beforehand, in the beginning, to use them in one go on all the required lessons and nothing else.
-Fuzzy controller will not be able to replicate this behavior exactly, but the concept of ``inclinations'' is based on a hypothesis that we can emulate it by finding a character ``inclined'' in such a way to behave like that.
-
-	(to be done)
+	int, //9 combat skill
+	int, // combat attack
+	int, // combat defense
+	int, // magic skill
+	int, // magic attack
+	int, //14 magic defense
+	int, // decorum
+	int, // artistry skill
+	int, // eloquence
+	int, // cooking skill
+	int, //19 cleaning skill
+	int // temperament
+>;
+	\end{lstlisting}
 	
-		\subsection{Discussion of the results}
-		(to be done)
+	The effects of actions are listed in the table~\ref{tab:action-effects} for reference.
+	
+	Applying the methodology explored in this work, we synthesize the 5 inclinations out of all the attributes and actions:
+	
+	\begin{lstlisting}
+using Inclinations = std::tuple<
+	double, // fighting
+	double, // magic
+	double, // housekeeping
+	double, // artistry
+	double // sinfulness
+>;
+	\end{lstlisting}
+	
+	Each inclination represents literally an inclination towards performing a particular set of actions, which we express as a fuzzy rules in a fuzzy controller.
+	
+	Compared to the trivial case from the chapter~\ref{trivial-case}, now we will use the rules which include both inclination values and the current attribute values of the character.
+	This allows the agent to actually ``choose'' actions to perform depending on the ``actual needs''.
+	
+	The full code for the fuzzy controller is in the appendix~\ref{appendix::baseline-case-fuzzy-controller}.
+
+	This is a case representing the full complexity we want to explore in the scope of this work, as it was never intended to replicate the original gameplay.
+	The other way around, we wanted to strip away all the unnecessary things from the game to leave only the essential generic problem.
+	
+	With such an elaborate set of attributes we can formulate complicated fitness rules, for example, the ``High General'' ending~\footnote{\url{https://princessmaker.fandom.com/wiki/High_General_Ending_(PM2)}}:
+	
+	\begin{enumerate}
+		\item Intelligence attribute $> 500$ and $>$ than Sensitivity attribute
+		\item Morality attribute $> 30$
+		\item Faith attribute $> 300$ and $>$ than Sensitivity attribute
+		\item ``Fighting reputation'' which is a sum of all fighting-related stats and skills, $> 421$
+	\end{enumerate}
+	
+The following piece of code is an example of encoding this ending into a fitness function:
+
+\begin{lstlisting}[label=fitness-general]
+double fitness(const Stats& stats)
+{
+	const int fighter_reputation = std::get<0>(stats) + std::get<1>(stats)
+	+ std::get<9>(stats) + std::get<10>(stats) + std::get<11>(stats);
+	
+	// if sensitivity is higher than intelligence or faith,
+	// return an absolute instant loss
+	if (std::get<8>(stats) >= std::get<2>(stats) 
+		|| std::get<8>(stats) >= std::get<6>(stats)) {
+		return std::numeric_limits<double>::max();
+	}
+	
+	double fitness_value = 0.0;
+	
+	// add penalty for intelligence below 500
+	if (std::get<2>(stats) < 500) {
+		fitness_value += (500 - std::get<2>(stats));
+	}
+	
+	// add penalty for morality below 30
+	if (std::get<5>(stats) < 30) {
+		fitness_value += (30 - std::get<5>(stats));
+	}
+	
+	// add penalty for faith below 300
+	if (std::get<6>(stats) < 300) {
+		fitness_value += (300 - std::get<6>(stats));
+	}
+	
+	// add penalty for fighter reputation below 421
+	if (fighter_reputation < 421) {
+		fitness_value += (421 - fighter_reputation);
+	}
+	
+	return fitness_value;
+}
+\end{lstlisting}	
+
+	When we run it on $T=1200$ which is already far outside of any classical algorithms, we get the following result (an output verbatim from the reference implementation of the solver):
+	
+	\begin{verbatim}
+Stats changes:
+	str: +0, con: +0, int: +507,
+	ref: +0, cha: +0, mor: +102,
+	fai: +612, sin: -204, sen: -588
+	cs: +330, ca: +165, cd: +165,
+	ms: +0, ma: +0, md: +408,
+	dec: +0, art: +0, elo: +0,
+	coo: +294, cle: +294, tem: +294
+Simulation Result:
+	Fitness: 0
+	\end{verbatim}
+
+	With the runtime of 12 minutes 30 seconds on the standard home PC machine~\footnote{Intel(R) Core(TM) i7-9700 CPU @ 3.00GHz with 32 GB DDR4 RAM, NVIDIA(R) GeForce(TM) RTX 2060}.
+	
+	To decode the raw output above, we received a specimen with the:
+	\begin{enumerate}
+		\item ``Intelligence'' of 507,
+		\item ``Morality'' of 102,
+		\item ``Faith'' of 612,
+		\item ``Sensitivity'' of -588 which is guaranteed to be less than both intelligence and faith
+		\item ``Combat skill'' 330, ``Combat attack'' 165 and ``Combat defense'' 165 summing up to more than 421.
+	\end{enumerate} 
+	
+	These are exactly the stats we asked for in the goal function, which the fitness score of 0 represents.
+	
+	And we decode the full plan from the inclination values which is the solution bringing us to these attribute values:
+	
+	\begin{enumerate}
+		\item TheologyClass x 383
+		\item FencingClass x 106
+		\item FightingClass x 106
+
+		\item TheologyClass - FencingClass - FightingClass x 24
+	
+		\item TheologyClass
+		\item FencingClass - FightingClass x 2
+
+		\item TheologyClass - FencingClass - FightingClass x 33
+
+		\item Housework x 294
+		\item Church x 63
+		\item Church - ScienceClass x 3
+		\item Church
+		\item Church - ScienceClass x 6
+		\item Church
+		\item Church - ScienceClass x 7
+		\item Church
+		\item Church - ScienceClass x 6
+		\item Church
+		\item Church - ScienceClass x 7
+		\item Church
+		\item Church - ScienceClass x 4
+		\item Church
+	\end{enumerate}
+	
+	The runtime is dependent on the complexity of the fitness function.
+	
+	If we remove the check for the fighter reputation, lines 28-31 from the listing~\ref{fitness-general},
+	it cuts the runtime to 6 minutes 30 seconds to reach the fitness 0.
+	
+	If we remove two checks, lines 23-31 from the same listing, we get the runtime of 5 minutes 50 seconds.
+	
+	Then, removing additionally the check for morality, lines 18-21, we get the runtime of 6 minutes 10 seconds.
+	
+	And, finally, if we reduce the fitness function to only the check for sensitivity being lower than intelligence and faith, that is, keep only the lines 6-11 and 33 of the listing~\ref{fitness-general}, the runtime becomes 3 minutes 20 seconds.
+	
+	We can summarize the dependency of the runtime on the complexity of the fitness function calculation in the table~\ref{table::runtime-per-complexity}
+	
+	
+	\begin{table}[h!]
+		\centering
+		\caption{Runtime versus fitness function complexity, baseline case experiment}
+		\label{table::runtime-per-complexity}
+		\begin{tabular}{|c|c|}
+			\hline
+			Requirements clauses amount & Runtime on a reference machine \\ \hline
+			full ``General'' ending goal & 12 m 30 s  \\ \hline
+			no reputation check & 6 m 30 s \\ \hline
+			no reputation, no faith checks & 5 m 50 s \\ \hline
+			no reputation, no faith, no morality checks & 6 m 10 s \\ \hline
+			no attribute checks, only the predicate & 3 m 20 s \\ \hline
+		\end{tabular}
+	\end{table}
+	
+	\begin{sidewaystable}[p]
+		\centering
+		\scriptsize
+		\caption{Action effects per day in Princess Maker 2 (nonzero shown; + indicates increase).}
+		\label{tab:action-effects}
+		\begin{tabular}{l*{21}{c}}
+			\toprule
+			Action & STR & CON & INT & REF & CHA & MOR & FAI & SIN & SEN & CS & CA & CD & MS & MA & MD & DEC & ART & ELO & COO & CLE & TEM \\
+			\midrule
+			Hunting        &     & +1  &     & -1  &     &     &     & +1  &     & +1  &     &     &     &     &     &     &     &     &     &     &     \\
+			Lumberjack     & +2  &     &     & -2  &     &     &     &     &     &     &     &     &     &     &     &     &     &     &     &     &     \\
+			Housework      &     &     &     &     &     &     &     &     & -2  &     &     &     &     &     &     &     &     &     & +1  & +1  & +1  \\
+			Babysitting    &     &     &     &     & -1  &     &     &     & +1  &     &     &     &     &     &     &     &     &     &     &     &     \\
+			Church         &     &     &     &     &     & +1  & +2  & -2  &     &     &     &     &     &     &     &     &     &     &     &     &     \\
+			Farming        & +1  & +1  &     & -1  &     &     &     &     &     &     &     &     &     &     &     &     &     &     &     &     &     \\
+			Innkeeping     &     &     &     &     &     &     &     &     &     & -1  &     &     &     &     &     &     &     &     &     & +1  &     \\
+			Restaurant     &     &     &     &     &     &     &     &     &     & -1  &     &     &     &     &     &     &     &     & +1  &     &     \\
+			Salon          & -1  &     &     &     &     &     &     &     & +1  &     &     &     &     &     &     &     &     &     &     &     &     \\
+			Masonry        &     & +2  &     &     & -1  &     &     &     &     &     &     &     &     &     &     &     &     &     &     &     &     \\
+			Graveyard      &     &     &     &     & -1  &     &     &     & +1  &     &     &     &     &     & +1  &     &     &     &     &     &     \\
+			Bar            &     &     & -2  &     &     &     &     &     &     &     &     &     &     &     &     &     &     & +1  & +1  &     &     \\
+			Tutoring       &     &     &     &     & -1  & +1  &     &     &     &     &     &     &     &     &     &     &     &     &     &     &     \\
+			SleazyBar      &     &     &     &     & +2  & -3  & -3  & +2  &     &     &     &     &     &     &     &     &     &     &     &     & -1  \\
+			Cabaret        &     &     & -1  & -2  & +3  &     &     & +1  &     &     &     &     &     &     &     &     &     &     &     &     & -1  \\
+			DanceClass     &     & +1  &     &     & +1  &     &     &     &     &     &     &     &     &     &     &     & +1  &     &     &     &     \\
+			FencingClass   &     &     &     &     &     &     &     &     &     & +1  & +1  &     &     &     &     &     &     &     &     &     &     \\
+			FightingClass  &     &     &     &     &     &     &     &     &     & +1  &     & +1  &     &     &     &     &     &     &     &     &     \\
+			MagicClass     &     &     &     &     &     &     &     &     &     &     &     &     & +1  & +2  &     &     &     &     &     &     &     \\
+			PaintingClass  &     &     &     &     &     &     &     &     & +1  &     &     &     &     &     &     &     & +2  &     &     &     &     \\
+			PoetryClass    &     &     & +1  & +1  &     &     &     &     & +1  &     &     &     &     &     &     &     & +1  &     &     &     &     \\
+			StrategyClass  &     &     & +2  &     &     &     &     &     & -1  & +1  &     &     &     &     &     &     &     &     &     &     &     \\
+			ScienceClass   &     &     & +2  &     &     &     & -1  &     &     &     &     &     &     &     & -1  &     &     &     &     &     &     \\
+			TheologyClass  &     &     & +1  &     &     &     & +1  &     &     &     &     &     &     &     & +1  &     &     &     &     &     &     \\
+			MannersClass   &     &     &     & +1  &     &     &     &     &     &     &     &     &     &     &     & +1  &     &     &     &     &     \\
+			\bottomrule
+		\end{tabular}
+	\end{sidewaystable}
+	
+	
+	\section{Discussion of the results}
+
+	First note we must make immediately is that the $T$ is actually dependent on the goal.
+	When we have a real goal we want to evaluate, it has less significance, but when experimenting, it's possible to set the goal which is completely unreachable by the solver --- for example, if we demand a value of an attribute to be 100 after 10 steps ($T = 10$), but every action increasing this attribute increases it by 1.
+
+	Pagmo is a highly optimized library so it detects when the chosen evolutionary algorithm converges and stops the evolution returning the fitness reached.
+	This prevents us from naively benchmarking the performance of the solver because when we change the goal, runtime can change arbitrarily.
+	Essentially, adding more conditions --- making the fitness calculation depending on more attributes --- tend to increase the runtime, as the evolution starts to converge slower.
+
+	Then, we received a result for $T = 1200$ which is already outside of all the initial expectations in 12 minutes, a time minuscule compared to modern demands in scientific computations.
+	It is clear that we successfully reduced the combinatorically hard problem to something with at least a polynomial time.
+	More than that, given the nature of a fuzzy controller, on every step it performs the same amount of calculations, which means that each simulation for an individual specimen is $O(T)$, and the computational complexity completely shifts to the evolutionary algorithm, which is reflected in our observations over the dependence of a runtime on a complexity of the goal function.
+
+	When writing the inference rules of the fuzzy controller, there is a choice of two ways.
+	
+	First way, we can express the domain knowledge by writing rules ``from the inclinations to actions'', that is, for each term of every inclination (input variable) describe what impact it should have on the priority of the actions.
+	This option has two drawbacks:
+	\begin{enumerate}
+		\item it scales with the amount of inclinations times amount of their terms
+		\item we risk missing out some of the actions if we made a mistake in synthesizing the list of inclinations
+	\end{enumerate}
+	This problem becomes much more significant once we start using the attributes in the rules, as the number of attributes is larger than the number of inclinations due to~(\ref{q<<n}).
+	
+	Second way, we can express the domain knowledge by writing rules ``from the actions back to inclinations'', that is, for every term of every action (output variable) we describe what combination of inclination and attribute values can lead to it.
+	This option has its drawbacks, too:
+	\begin{enumerate}
+		\item it scales with the amount of actions times amount of their terms
+		\item we risk missing out some of the combinations of inclinations and attributes
+	\end{enumerate}
+	If we go this way and start adding more rules than the absolute minimum we still risk getting into the combinatorial explosion.
+	
+	Still, the drawbacks listed here do not mean that there are absolute requirements on the amount of rules we have to write.
+	The more specific we would be in writing the rules, the more correct the action selection is expected to be.
+
+	One of the observed situation was skipping the input variables because of over-specification of terms.
+	
+	Let's say we specify our ``artistry'' and ``housekeeping'' inclinations as follows, with four terms \textit{tiny}, \textit{low}, \textit{high}, \textit{highest}:
+	
+	\begin{lstlisting}[language=yaml]
+InputVariable: InclinationArtistry
+	enabled: true
+	range: 0 1.000
+	lock-range: false
+	term: tiny Ramp 0.330 0.000 
+	term: low Triangle 0.000 0.330 0.670
+	term: high Triangle 0.330 0.670 1.000
+	term: highest Ramp 0.670 1.000
+	
+	# (identical definition for InclinationHousekeeping)
+	\end{lstlisting}
+	
+	And we also have a block of rules like following:
+	
+	\begin{lstlisting}[language=yaml]
+rule: if InclinationArtistry     is high then MannersClass is high
+rule: if InclinationHousekeeping is high then MannersClass is low
+	\end{lstlisting}
+	
+	If we have a specimen with \texttt{InclinationArtistry} $= 0.9$ and \texttt{InclinationHousekeeping} $= 0.6$,
+	then, unexpectedly to us, priority of \texttt{MannersClass} would be \texttt{low}, not \texttt{high}.
+	Because the membership function for the term ``high'' will emit higher value for ``housekeeping'' inclination than for the ``artistry''.
+	As we don't have a rule for \texttt{InclinationArtistry is highest} the values \textit{higher} than specified in the rule, despite being ``obviously'' fitting the rule, are actually ignored instead.
+	
+	To resolve this problem it's more beneficial to actually reduce the amount of terms, removing the ones not used in the rules.
+	
 
 % The first one is regarding the data. In the documentation you talk about the game, but you don’t explain the information about the input variables, you should give more details to get the complexity on how much information there is in the input. You also talk about the chromosomes, but I cannot see the translation from the input into these chromosomes.
 %I also would like to know how you want to evaluate the quality of the ouptut.
 %Are these experiments that you explain in the video described in the report?
 
 	
-	\section{Conclusions and Future Work}
+	\chapter{Conclusions and Future Work}\label{section::conclusions}
 
-	First, let us make a conclusion tangential to the origin problem but related to the chosen theoretical toolset.
-	While the fuzzy controller can indeed be seen as a tool to formalize the decision making using the expert knowledge in the given domain, it is too complicated mechanism by itself to help reducing the complexity of the problem it's solving.
+	To sum it up, we achieved the following results:
+	
+	\begin{enumerate}
+		\item a reference solver implementing the method described in this work is actually able to produce the solutions with fitness 0, meaning, the ones which fully satisfy the predefined goal predicate;
+		\item performance-wise, the solver depends on $T$ linearly, effectively completely eliminating the computational complexity dependent on the amount of actions to execute;
+		\item discoveries has been done related to the actual complexity of encoding the domain knowledge as a fuzzy controller;
+		\item it has been determined that the speed of convergence is actually dependent on the complexity of the fitness function calculation;
+	\end{enumerate}
+	
+	With this, our objectives stated in the section~\ref{section::objectives} has been reached and we can give a brief summary on the further research spanning outside the scope of this particular work.
+	
+	A game so mechanically interdependent as \textit{Princess Maker 2} is too complex to solve using such a straightforward model.
+	A lot of simplifications were needed to arrive at a coherent model of the deterministic planning problem with a stateful agent.
+	Nevertheless, the hybrid solver built in the scope of this work have shown that it successfully determines a solution given that all the domain knowledge is accurately encoded in the fuzzy controller, and as such, it can be used to solve any high-dimensional deterministic planning problem which can be modeled according to our definitions from the section~\ref{problem-statement}.
+	This constitutes the core value of this work.
+	
+	We have shown that the hybrid fuzzy-genetic system described in this work has a linear complexity in relation to the amount of planning steps $T$ assuming that executing $T$ steps is a requirement.
+	Computing $T=1200$ steps in 12 minutes is effectively instantaneous nowadays so there's a little benefit in a further research of the computational complexity \textit{in relation to $T$}.
+	However, a research on how the computational complexity of this solver depends on amount of attributes $n$~(\ref{definitions:attributes-amount}) and amount of actions $m$~(\ref{definitions:actions-amount}) is still needed to be done.
+
+	In the span of this work, only two cases distinct in the number of actions $m$ were explored, and the more thorough exploration of the parameter space is left for a dissertation-level research.
+	
+	Now, first, let us make a conclusion tangential to the origin problem but related to the chosen theoretical toolset.
+	While the fuzzy controller can indeed be seen as a tool to formalize the decision making using the expert knowledge in the given domain, it is too complicated mechanism \textit{by itself} to help reducing the complexity of the problem it's solving.
 	One should treat it not as a tool which helps make complicated problems simpler but which, hopefully, makes unsolvable ones solvable at all, as proper configuration of the fuzzy controller is already a problem in itself.
 
-	Despite the context of the problem being a computer game, the problem itself is a general one, and the proposed approach can be applied to any high-dimensional deterministic planning problem.
-	This constitutes the core value of this work.
-
-	In the span of this work, only three distinct cases were explored, and the more thorough exploration of the parameter space is left for a dissertation-level research.
-
-	The proof-of-concept solver implemented and discussed in this work is obviously an instance of an automated planner, for which an extensive framework of both machinery and benchmarking exists.
+	Second, the proof-of-concept solver implemented and discussed in this work is obviously an instance of an automated planner, for which an extensive framework of both machinery and benchmarking exists.
 	The logical next step would be to determine a correct place of this method in the existing body of knowledge about the automated planners and perform formal comparisons of performance with some other state-of-the-art methods.
 
 	Another work which exploits the idea of using the domain knowledge in the solution process exists, but it uses the Linear Temporal Logic instead, and utilizes the existing PDDL automatic planning machinery~\cite{LU2025121666}.
 
 	The paper~\cite{song2023rl_ea} briefly mentioned in the section \ref{section::evolutionary}, is an possible alternative hybrid system, where the target of evolution is a reinforcement learning process.
 
+	Both these are examples of possible further research in the area of hybrid systems solving the high-dimensional planning problems of large horizon using the domain knowledge.
+	
 	\printbibliography
 
+	\appendix
+	
+	\chapter{Baseline case fuzzy controller}\label{appendix::baseline-case-fuzzy-controller}
+	
+	\lstinputlisting[language=yaml]{code/Baseline.fll}
+	
 \end{document}
