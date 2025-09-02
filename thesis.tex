@@ -12,8 +12,11 @@
 % Custom bibliography file
 \addbibresource{library.bib} 
 
+\usepackage{float}
+
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta}
 
 % Must compile the document with -shell-escape
 % Must compile the document in an environment where the `pygments` library is installed in Python
@@ -28,6 +31,8 @@
 \newcommand\YAMLcolonstyle{\color{red}\mdseries}
 \newcommand\YAMLkeystyle{\color{black}\bfseries\smallfont}
 \newcommand\YAMLvaluestyle{\color{blue}\mdseries}
+% YAML highlighting hack END
+
 
 % Landscape-oriented tables
 \usepackage{rotating}
@@ -102,103 +107,200 @@
 	
 	\chapter{Introduction}
 	
-	A deterministic planning problem for a stateful agent is a classical and generic problem applicable to a variety of real-world problems.
-	However, it is also prone to a combinatorial explosion when the range of the actions to choose and the planning horizon (length of the sequence of actions to find) become sufficiently large.
-	Works like~\cite{WOS:001308319900003} cover both the real-world applications and a significance of the ``curse of dimensionality''.
+	\section{Motivation and Context}
 	
-	In this work we will discuss an alternative approach of solving deterministic planning problems for stateful agents with large planning horizons and large action spaces, using a hybrid fuzzy-genetic system which relies on a domain knowledge to reduce the dimensionality.
+	A deterministic planning problem for a stateful agent is one of the most generic formulations in artificial intelligence. 
+	The task can be summarized as selecting a sequence of actions which transforms the state of an agent into a desired goal state. 
+	This formulation naturally appears in a wide range of real-world domains: robotics (planning robot trajectories under resource and time constraints), industrial scheduling (allocating tasks to maximize production while minimizing downtime), and control systems (maintaining stability of dynamic processes under changing conditions).
 	
-	In this introduction section we will set up the context of a problem to be solved and briefly cover the most obvious approaches to its solution.
-	Readers which don't require such an introduction can proceed directly to the section \ref{problem-statement}.
+	The key difficulty in such problems is the combinatorial explosion. 
+	As soon as the number of available actions grows and the planning horizon becomes long, the search space of all possible trajectories expands exponentially. 
+	This phenomenon, commonly referred to as the curse of dimensionality, renders classical exhaustive approaches infeasible even for moderately sized problems.
 	
-	\section{A game solver as a planning problem}
-
-	In 1993 in Japan Studio Gainax released a computer game called \textit{Princess Maker 2}.
-	The game essentially defined a so-called ``life simulation'' genre.
-	The player takes the role of a guardian of a young girl, making decisions that affect her upbringing and future.
-	\textit{Princess Maker 2} is a narrative-heavy game, with a diverse set of gameplay elements depending on player's choices, but under the plot and all the other art elements which normally constitute a computer game, lies very formal and routine core gameplay loop:
+	Works like~\cite{WOS:001308319900003} cover both the real-world applications and a significance of the curse of dimensionality.
 	
-	\begin{enumerate}
-		\item The player estimates the current state of the girl;
-		\item The player chooses the day-to-day schedule for the girl;
-		\item The girl ``performs'' the scheduled actions;
-		\item The game changes the state of the girl according to the actions performed.
-	\end{enumerate}
+	In this work, we use the Japanese computer game Princess Maker 2 (Gainax, 1993) as a motivating case study. 
+	While the game itself is narrative-driven and contains many mechanics that go beyond formal modeling, its core gameplay loop is a textbook instance of a deterministic planning problem. 
+	The player controls a stateful agent — the daughter character — by repeatedly selecting actions such as study, work, or leisure. 
+	Each action deterministically modifies a set of numerical attributes, and after a fixed horizon of in-game years, the outcome is evaluated against predefined conditions that determine the “ending.”
 	
-	Story-wise, the game ends after ten years of upbringing the girl.
-	At this point the game evaluates the state reached by the girl and tells the final ``fate'' she got as the result.
-	The title of the game is the hint on the ultimate goal, but depending on the final characteristics of the girl (and some special story-dependent flags we ignore in this work) game can end in more than twenty different endings.
+	Stripped of its narrative elements, Princess Maker 2 yields a highly formal planning problem: an agent with dozens of numeric attributes, several dozen possible actions, and a planning horizon of several thousand steps. 
+	This combination of a large state space, broad action set, and long horizon exemplifies the type of problem where classical planners and reinforcement learning approaches both struggle. 
+	At the same time, because the formulation is generic, any progress on this problem carries implications well beyond the original game context.
+	
+	In the following section we will briefly review the most obvious approaches to this problem, namely, automatic planning theory and reinforcement learning, and discuss why they both fail to scale to the case we are interested in.
+	
+	\section{Existing Approaches}
+	
+	\subsection{Automatic Planning Theory}
+	
+	Automatic planning in artificial intelligence is historically grounded in the STRIPS~\cite{fikes1971strips} formalism, which defines planning as the composition of operators that transform an initial world model into one satisfying a goal condition.
+	In principle, this description matches exactly the type of solver we are aiming for: we have a stateful agent, a set of deterministic actions, and a requirement to reach a specified goal state.
+	
+	Modern planners, such as ENHSP~\cite{enhsp::scala2020subgoaling}~\cite{enhsp::Scala2016IntervalBasedRF}, extend this formalism to support numeric fluents and continuous effects. 
+	On small-scale problems they have been demonstrated to work effectively, often guaranteeing optimality of the resulting plan.
+	For example, existing benchmarks~\footnote{\url{https://github.com/hstairs/enhsp/tree/enhsp-20}} include instances with up to forty numeric variables and around ten actions, which can be solved in practical time.
+	
+	However, the core assumptions of classical planning diverge from the requirements of our case.
+	Most planners are designed to minimize plan length, i.e., to find the shortest action sequence that satisfies the goal.
+	In contrast, the Princess Maker 2 formulation requires executing a fixed number of steps before the final state can be evaluated.
+	No-operation actions are not available, so every step transforms the agent’s state irreversibly.
+	This means that reaching the goal “too early” is not valid — it is only the state after the full horizon that determines success.
+	
+	In addition, the problem of scale remains prohibitive.
+	Even if the goal condition could be reformulated to suit the planner’s semantics, the state space induced by 23 attributes, 27 actions, and thousands of steps is far outside the scope of tractable automatic planning.
+	Research does exist on scaling planners with temporal logics~\cite{LU2025121666} and heuristics, but these approaches are not focused on high-dimensional numeric fluents of the type present in our motivating case.
+	
+	\subsection{Reinforcement learning}
+	
+	Reinforcement learning~\cite{sutton2018reinforcement} (RL) is another approach which seems, at first glance, to be a natural fit for the problem.
+	In RL, we model an agent interacting with an environment: the agent observes a state, selects an action, and receives a reward.
+	Over time, the agent is expected to learn a policy that maximizes cumulative reward.
+	The analogy with our setting is straightforward — the state is the character’s attributes, the actions are the available schedule choices, and the “reward” is the final outcome at the end of the planning horizon.
+	
+	However, the practical obstacles are significant.
+	The first is the dimensionality of the state space.
+	With 23 attributes each taking values in the range of roughly 0 to 500, the number of possible states is astronomically large.
+	A naive tabular representation of a Q-function would require a table of size $27 \times 500^{23}$, which is intractable to store or update.
+	While function approximation can reduce this requirement, it does not remove the exponential blowup inherent in such spaces.
+	
+	The second issue is the length of the planning horizon.
+	In the simplified gameplay setup, the player makes three choices per month for ten in-game years, which already leads to a search tree over 360 steps.
+	In the full day-by-day formulation the horizon is an order of magnitude longer.
+	Standard RL algorithms struggle when the reward is sparse and delayed, as in this case where only the terminal state matters.
+	Exploration becomes ineffective because the probability of randomly reaching a good ending within thousands of steps is vanishingly small.
 		
-	This is essentially a stateful agent planning its behavior according to the predefined goal to be reached.
-	
-	Thus, we organically come to a planning problem, and a question arises: can we solve it? Given the desired ending, can we deduce the total ``schedule'', a full list of choices to make to get to this ending, automatically and in one go? This question lies in the core of this work.
-	
-	Solving the full Princess Maker 2 game is completely out of scope of this work.
-	The game contains a set of auxiliary gameplay mechanics which significantly influence the evolution of a character, and a hidden storyline-dependent flags which are necessary to reach some of the endings.
-	These elements are not fit for modelling as a planning problem.
-	
-	So, we will abstract the origin game into the most simplistic model, namely:
-	
-	\begin{enumerate}
-		\item only the numerical attributes of a character are considered for an ending state (we ignore story-related boolean flags)
-		\item each action has a completely determined effect on character attributes (in the original game actions have randomized effects from a range of values)
-		\item actions are the only way to change the character state (we ignore all other gameplay mechanics except the week-by-week schedule of actions)
-	\end{enumerate}
+	Finally, unlike in many RL benchmarks, our problem does not allow neutral or reversible actions.
+	Every action irreversibly changes the state, which exacerbates the exploration problem.
+	Taken together, these aspects make classical reinforcement learning algorithms impractical for the problem scale we consider.
 
-	As the result of this simplification, we are left over with a deterministic planning problem, which nevertheless has a significant scale, because in the Princess Maker 2 game there are:
+	\section{Fuzzy Logic and Fuzzy Controllers}
 	
-	\begin{enumerate}
-		\item 23 numerical attributes of a character
-		\item 27 possible actions to schedule
-		\item the end state is evaluated and compared to the goal after effectively 3650 action steps (10 ``years'' of 365 ``days'' one action per day) (the actual in-gameplay scheduling happens in batches of 10 actions to shorten the game but we don't have to follow that exactly).
-	\end{enumerate}
+	Fuzzy logic, introduced by L. Zadeh in 1965, extends classical set theory by allowing partial membership of elements in a set.
+	Instead of a variable belonging to a set either completely or not at all, in fuzzy logic a variable may belong to a set with a degree between 0 and 1.
+	This allows us to model linguistic terms such as “low,” “medium,” or “high” in a mathematically precise way.
+	
+	A fuzzy controller applies this idea to decision-making.
+	The system is defined through linguistic variables with associated membership functions, and a collection of symbolic rules.
+	A typical example outside this work would be:
+	
+\begin{verbatim}
+	If temperature is high then fan speed is high.
+\end{verbatim}
+	
+	Here, both “temperature” and “fan speed” are fuzzy variables, and the rule connects them in a way that corresponds directly to human reasoning.
+	After applying fuzzification (mapping numeric input values into fuzzy terms), rule evaluation, and defuzzification (converting fuzzy outputs back into numeric values), the controller produces an actionable decision.
+	
+	The benefit of this approach is the ability to capture domain knowledge without enumerating every possible combination of numeric parameters.
+	Instead of constructing a complete reward table or transition map — which would be infeasible in large state spaces — we specify a relatively small set of symbolic rules which generalize across many states.
+	This makes fuzzy controllers attractive for problems where expert intuition about the domain exists, but exhaustive specification is impossible.
+	
+	In the context of this work, fuzzy controllers provide a mechanism to express priorities over actions in symbolic terms, forming a bridge between human-understandable heuristics and algorithmic decision-making.
+	
+	\section{Genetic Algorithms}
+		
+		Genetic algorithmss~\cite{song2023rl_ea}~\cite{beyer2002evolution_strategies} (GAs) are a class of optimization methods inspired by biological evolution.
+		A population of candidate solutions is maintained, where each solution is represented as a genome — a sequence of values encoding the parameters of interest.
+		The algorithm proceeds iteratively through the following steps:
+		
+		\begin{enumerate}
+			\item Evaluation: every genome is assigned a fitness score according to an objective function.
+		
+		\item Selection: genomes with higher fitness are more likely to be chosen for reproduction.
+		
+		\item Crossover: pairs of genomes exchange parts of their structure, creating new offspring that combine traits of both parents.
+		
+		\item Mutation: with low probability, individual genes are randomly altered, introducing diversity.
+		
+		\item Replacement: the new generation replaces the old, and the process repeats.
+		\end{enumerate}
+		
+		Over time, the population tends to evolve towards fitter solutions, even when the search space is large, non-linear, or poorly understood. The method does not guarantee a globally optimal solution, but it often finds good approximations in domains where exact methods are computationally infeasible.
+		
+		The main advantage of GAs is that they treat the problem as a black box: only the ability to evaluate candidate solutions is required, while no assumptions about continuity, differentiability, or convexity are needed. This makes them well suited for combinatorial or highly non-convex problems.
+		
+		In the context of this work, genetic algorithms will be used to optimize the inclinations — latent behavioral parameters that guide the fuzzy controller. This reduces the original planning problem from direct search over long sequences of actions to an evolutionary search in a much smaller parameter space.
+	
+	\section{Our Proposed Approach}
+	
+	The discussion above shows that classical approaches such as automatic planning or reinforcement learning are unable to scale to the requirements of our motivating problem. To address this, we propose a hybrid heuristic method which combines symbolic reasoning with evolutionary optimization.
+	
+	The core idea is to replace direct search over complete action sequences with search over a smaller set of latent behavioral parameters, which we call inclinations. These inclinations represent tendencies toward particular groups of actions. A fuzzy controller then maps the inclinations together with the current state into a concrete choice of action.
+	
+	This formulation has two benefits. First, it allows us to encode domain knowledge directly into the fuzzy rule base, reducing the effective dimensionality of the search. Second, it enables optimization to take place in the smaller inclination space, rather than in the exponentially large space of all possible trajectories. The resulting search problem becomes tractable for evolutionary algorithms such as genetic algorithms, which only require evaluation of candidate solutions, not explicit enumeration of the search space.
+	
+	The hypothesis of this work is that such a hybrid fuzzy-genetic approach can find valid solutions in polynomial-like time in cases where reinforcement learning or automatic planners fail due to combinatorial explosion.
+	
+	The overall process is illustrated in Figure~\ref{fig:approach-diagram}.
+	
+	\begin{figure}[H]
+		\centering
+		\begin{tikzpicture}[node distance=5cm, auto, >=Latex]
+			
+			% Styles
+			\tikzstyle{block} = [rectangle, draw, rounded corners, minimum height=1.2cm, minimum width=2.8cm, align=center]
+			\tikzstyle{arrow} = [->, thick]
+			
+			% Nodes
+			\node[block] (inclinations) {Inclinations \\ (genome)};
+			\node[block, right of=inclinations] (fuzzy) {Fuzzy Controller};
+			\node[block, right of=fuzzy] (action) {Action};
+			\node[block, below of=action] (state) {State Update};
+			\node[block, left of=state] (fitness) {Fitness Evaluation};
+			\node[block, below of=inclinations] (evolution) {Genetic Algorithm \\ (Evolutionary Loop)};
+			
+			% Arrows (main flow)
+			\draw[arrow] (inclinations) -- (fuzzy);
+			\draw[arrow] (fuzzy) -- (action);
+			\draw[arrow] (action) -- (state);
+			\draw[arrow] (state) -- (fitness);
+			\draw[arrow] (state) -- (fuzzy) node[above,midway,right=0.1cm]{$\times T$};
+			\draw[arrow] (fitness) -- (evolution);
+			\draw[arrow] (evolution) -- (inclinations);
+			
+		\end{tikzpicture}
+		\caption{Schematic overview of the fuzzy-genetic approach.}
+		\label{fig:approach-diagram}
+	\end{figure}
 
-	This presents a significant challenge to classic algorithms.
-	
-	At the same time, because this problem is so generic, any progress in finding an efficient solution to it is beneficial to multiple areas.
-	
-	\section{Existing methods assessment}\label{introduction:assessment}
+	\section{Comparative assessment}
 
-	There are two approaches which are deceptively obvious choices to solve this problem, namely, automatic planning theory~\cite{fikes1971strips} and reinforcement learning~\cite{sutton2018reinforcement}.
-	
-  \subsection{Automatic planning theory}
-  
-  To quote the foundational STRIPS paper:
-  
-  \blockcquote[p.~190]{fikes1971strips}
-  {The task of the problem solver is to find some composition of operators that transforms a given initial world model into one that satisfies some stated goal condition.}
-  
-  This sounds exactly like the description of the solver we want to get.
-  
-  	Stateful agent can be modeled using any of the modern automatic planners which support numeric fluents, for example, ENHSP~\cite{enhsp::scala2020subgoaling}~\cite{enhsp::Scala2016IntervalBasedRF}.
-	
-	This is proven to work on small-scale problems: the code repository of the ENHSP-20 solver~\footnote{\url{https://github.com/hstairs/enhsp/tree/enhsp-20}} has benchmarks with essentially 40 numeric parameters and 10 action choices.
-	
-	But the very nature of the automatic planners, namely, the intent to search for the shortest schedule reaching the goal, contradicts the problem we want to solve.
-	The \textit{Princess Maker} problem dictates delayed evaluation of the goal state, we must execute a set amount of actions, and stay at the goal state at that time.
-	More than that, as we define more rigorously in the section \ref{problem-statement}, there are no ``no-operation'' actions, we cannot ``do nothing'' to pad the actions sequence, and every action changes the state.
-	
-	So, while using the automatic planners almost perfectly matches our needs, this is not the goal of this work.
-	In addition to that, the problem of scale stays unexplored, namely, the specific Princess Maker problem is just an example of a large-scale planning problem which we want to explore in this work.
-	
-	Though, there exist works which directly tackle the problem of scale in the currently existing automatic planners, but using different approaches, namely, Linear Temporal Logic~\cite{LU2025121666}.
-	They don't focus specifically on numeric fluents, though.
+To summarize the discussion above, in the Table~\ref{table::comparison} we compare the two obvious alternatives with the hybrid fuzzy-genetic approach proposed in this work.
 
-  \subsection{Reinforcement learning}
-	Second, we can try applying the Reinforcement Learning~\cite{sutton2018reinforcement} to this problem.
-	The choice of this optimization method is deceptively obvious, because at a glance, the problem looks like a perfect match for it.
-	We have an agent, which has a state, and this agent can perform actions which change the state.
-	Ultimately we want the agent to reach the goal state which will give it the best reward.
-	
-	The issue of scale is the main obstacle in this case.
+\begin{table}[H]
+	\label{table::comparison}
+	\centering
+	\begin{tabular}{|p{3cm}|p{5cm}|p{6cm}|}
+		\hline
+		\textbf{Method} & \textbf{Strengths} & \textbf{Weaknesses in our context} \\ \hline
+		Automatic planning theory & - Formal match to state-action-goal formulation. \newline - Established solvers (e.g., ENHSP) exist. \newline - Optimality guarantees on small problems. & - Focus on minimizing plan length, incompatible with fixed-horizon requirement. \newline - No-operation actions not available, premature goal achievement invalidates plan. \newline - State space scaling beyond practical limits. \\ \hline
+		
+		Reinforcement learning & - Natural agent/action/reward formalism. \newline - Flexible and general framework. \newline - Large body of research and practical algorithms. & - Curse of dimensionality: \(500^{23}\) states in the motivating case. \newline - Very long horizons with sparse terminal rewards. \newline - No reversible or neutral actions, exploration ineffective. \\ \hline
+		
+		Fuzzy-genetic hybrid approach (proposed) & - Encodes domain knowledge symbolically via fuzzy rules. \newline - Dimensionality reduction through latent variables (“inclinations”). \newline - Optimization operates on reduced space, not on raw action sequences. & - Manual design of fuzzy rule base is non-trivial. \newline - No global optimality guarantees. \newline - Performance depends on quality of rules and evolutionary hyperparameters. \\ \hline
+	\end{tabular}
+	\caption{Comparison of alternative methods for solving large-horizon deterministic planning.}
+\end{table}
 
-	The origin problem of solving Princess Maker 2, described in the previous subsection,  assumes 27 actions over a state space of 23 numeric characteristics each one having values between 0 and 500.
-	Just enumerating the possible states of the agent caused by these actions in the state space of such a size is an intractable problem, which we will try to rigorously show in the chapter~\ref{methodology}.
-	Naively, a tabular representation of the reward function or Q-function would require a table of size $27 \times 500^{23}$, which is already practically intractable.
+This comparison highlights why classical planners and reinforcement learning approaches are unsuitable for the case we focus on, and motivates the introduction of a fuzzy-genetic heuristic, which will be presented in detail in Chapter~\ref{section::solution}.
+
 	
-	Moreover, the most important problem is the length of the process.
-	Following the base example of \textit{Princess Maker 2} gameplay, player makes 3 choices per virtual ``month'', and the game spans 10 ``years'', so the search space is a tree $3 \times 12 \times 10 = 360$ levels deep.
-	If we diverge from this gameplay simplification and perform a full day-by-day scheduling the depth of the tree becomes exponentially larger.
+	\section{Contributions and Objectives}
+	
+		\begin{enumerate}
+			\item Formalization of Princess Maker–style problems as deterministic planning with large horizons.
+		
+			\item Introduction of inclinations + fuzzy rule base as a dimensionality reduction heuristic.
+			
+			\item Implementation of a solver using fuzzylite (fuzzy logic) and pagmo (evolutionary algorithms).
+			
+			\item Experimental evaluation on trivial and baseline control cases.
+		\end{enumerate}	
+		
+		This work is foundational proof of concept, not yet a full game solver nor a generic ready-to use solver for a wide range of real-world problems.
+		
+		In Chapter~\ref{problem-statement} we now give a precise problem formulation, and in Chapter~\ref{chapter::implementation} we develop the proposed fuzzy-genetic heuristic approach in detail.
+
 	
 	\chapter{Formal problem statement}\label{problem-statement}
 
@@ -528,7 +630,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 
 	The library Pagmo \cite{Biscani2020} includes a lot of already implemented different evolutionary algorithms apart from the simple genetic algorithm so it enables us easier exploration of possibilities in optimizing the full solver.
 
-	\chapter{Implementation}
+	\chapter{Implementation}\label{chapter::implementation}
 
 	The technical implementation of the method is performed in C++~\cite{ppp3} using the libraries FuzzyLite~\cite{fl::fuzzylite} and Pagmo~\cite{Biscani2020}
 
@@ -1431,6 +1533,80 @@ rule: if InclinationHousekeeping is high then MannersClass is low
 
 	
 	\chapter{Conclusions and Future Work}\label{section::conclusions}
+
+
+	% BEGIN SUGGESTION
+	
+	To sum it up, the main result of this work is that the hybrid fuzzy–genetic solver is able to function as intended (instead of: “actually works”). It produces action sequences with fitness 0, meaning they fully satisfy the goal predicate. That was the critical test of whether the idea is viable at all, and we passed it.
+	
+	Performance-wise, the solver depends linearly on the planning horizon 
+	𝑇
+	T. For example, running 
+	𝑇
+	=
+	1200
+	T=1200 steps on a standard home PC took 12 minutes. For modern computing this is effectively instantaneous, and it completely sidesteps the combinatorial explosion of classical approaches. The runtime instead depends mostly on how complex the fitness function is and, to a lesser extent, how the fuzzy controller is written.
+	
+	Along the way, we found several structural properties:
+	
+	- The fuzzy controller, while useful for encoding domain knowledge, is a complicated object on its own. Configuring it is already a nontrivial problem.
+	
+	- The convergence speed of the genetic algorithm is governed by the cost of evaluating the fitness function, not by the size of the action space.
+	
+	All objectives defined in Section 3.3 have been met: we formalized the problem, implemented a solver, tested it on different scales, and analyzed the results.
+	
+	A useful comparison is with reinforcement learning. In our case, if we try to set up a tabular RL agent with 23 attributes ranging up to 500 and 27 actions, the Q-table would be 
+	27
+	×
+	500
+	23
+	27×500
+	23
+	, which is clearly infeasible (instead of: “obviously impossible”) to store or explore. Even with function approximation, RL still faces the horizon problem: with 
+	𝛾
+	=
+	0.99
+	γ=0.99 and 
+	𝑇
+	=
+	1200
+	T=1200, the learning signal from the final reward is around 
+	6
+	×
+	10
+	−
+	6
+	6×10
+	−6
+	, practically zero. Raising 
+	𝛾
+	γ makes the effective horizon too long and increases sample complexity. Our method avoids this by using the known deterministic model to directly simulate trajectories, and by searching in the much smaller space of inclinations 
+	𝑞
+	≪
+	𝑛
+	q≪n. The trade-off is that we have to supply a fuzzy rule base by hand. In short (instead of: “In other words”): we pay in design effort, but in return we get a tractable solver that actually reaches the goal.
+	
+	There are limitations. The model used here is a simplification of the full Princess Maker 2 game, and the solver is sensitive to how the fuzzy rules are written. The fuzzy controller should not be seen as a simplification tool but rather as a way to make unsolvable problems solvable at all.
+	
+	As for future work, there are several directions that go beyond this thesis:
+	
+	1. Study the behavior of the solver when the number of attributes 
+	𝑛
+	n and actions 
+	𝑚
+	m increase.
+	
+	2. Extend the solver to non-deterministic environments. The fuzzy part will still work, but decoding the final plan from inclinations will be harder.
+	
+	3. Benchmark against existing planners and RL–EA hybrids to see where this method fits in the larger ecosystem.
+	
+	4. Automate the fuzzy rule generation with clustering or learning, to reduce the manual workload.
+	
+	5. Try other hybridizations, such as RL-assisted evolutionary search or temporal-logic–based planners with domain knowledge.
+	
+	The final takeaway is that the fuzzy–genetic solver is a proof of concept. It shows that dimensionality reduction and symbolic reasoning can turn an intractable problem into something we can actually solve. The Princess Maker 2 example was just a testbed. The method itself applies to any large-horizon deterministic planning problem, and pushing this further would be a natural path for doctoral-level research.
+	
+	% END SUGGESTION
 
 	To sum it up, we achieved the following results:
 	
