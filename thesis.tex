@@ -79,13 +79,16 @@
 \title{Fuzzy-Genetic Hybrid Models for Large-Horizon Deterministic Planning}
 
 % Name of deliverable
-\newcommand{\deliverableName}{Master's Thesis}
+\newcommand{\deliverableName}{Final Master’s Project}
 
 % Group names(s)
 \author{Mark Safronov}
 
+% Advisor
+\newcommand{\directedBy}{Dr. Jordi Duch}
+
 % Group number
-\newcommand{\groupNumber}{A_2024-25_105200}
+\newcommand{\groupNumber}{A\_2024-25\_105200}
 
 % Any comments for us
 \newcommand{\comments}{Comments for teachers of the course}
@@ -103,6 +106,15 @@
 	
 	\input{./title.tex}
 	
+	\begin{abstract}
+		This thesis investigates the problem of deterministic planning with long horizons, where an agent must execute a fixed-length sequence of actions that transform its state into a desired goal state. Such problems arise in domains ranging from robotics to scheduling, and are characterized by a combinatorial explosion of possible trajectories.
+		
+		The motivating case study is the Japanese life simulation game Princess Maker 2, which, when stripped of its narrative elements, yields a formal instance of this problem: an agent described by dozens of numeric attributes, several dozen actions, and a planning horizon of thousands of steps. Classical approaches such as automatic planning and reinforcement learning fail to scale under these conditions, either due to incompatibility with fixed-horizon evaluation or due to the curse of dimensionality and sparse terminal rewards.
+		
+		To address this, we propose a hybrid heuristic method that combines fuzzy logic and genetic algorithms. Domain knowledge is encoded as fuzzy rules, which reduce the effective dimensionality of the problem by introducing latent parameters called inclinations. These inclinations are optimized by evolutionary algorithms, turning the original intractable search into a manageable optimization task.
+		
+		We implement this method using the fuzzylite and pagmo libraries in C++, and evaluate it on test cases of increasing complexity. Results show that the solver is able to construct valid action sequences that satisfy predefined goal conditions, with runtime scaling linearly with the planning horizon. While the manual design of fuzzy rules remains a limitation, the proof of concept demonstrates that fuzzy-genetic heuristics can effectively solve large-horizon deterministic planning problems, where classical methods are impractical.
+	\end{abstract}
 	\tableofcontents
 	
 	\chapter{Introduction}
@@ -124,13 +136,15 @@
 	The player controls a stateful agent — the daughter character — by repeatedly selecting actions such as study, work, or leisure. 
 	Each action deterministically modifies a set of numerical attributes, and after a fixed horizon of in-game years, the outcome is evaluated against predefined conditions that determine the “ending.”
 	
+	In the appendix~\ref{appendix::screenshots} two screen captures are presented to demonstrate the complexity of the character attributes encoding and the action space in this game.
+	
 	Stripped of its narrative elements, Princess Maker 2 yields a highly formal planning problem: an agent with dozens of numeric attributes, several dozen possible actions, and a planning horizon of several thousand steps. 
 	This combination of a large state space, broad action set, and long horizon exemplifies the type of problem where classical planners and reinforcement learning approaches both struggle. 
 	At the same time, because the formulation is generic, any progress on this problem carries implications well beyond the original game context.
 	
 	In the following section we will briefly review the most obvious approaches to this problem, namely, automatic planning theory and reinforcement learning, and discuss why they both fail to scale to the case we are interested in.
 	
-	\section{Existing Approaches}
+	\section{Existing Approaches}\label{section::existing-approaches}
 	
 	\subsection{Automatic Planning Theory}
 	
@@ -199,7 +213,7 @@
 	
 	\section{Genetic Algorithms}
 		
-		Genetic algorithmss~\cite{song2023rl_ea}~\cite{beyer2002evolution_strategies} (GAs) are a class of optimization methods inspired by biological evolution.
+		Genetic algorithms~\cite{song2023rl_ea}~\cite{beyer2002evolution_strategies} (GAs) are a class of optimization methods inspired by biological evolution.
 		A population of candidate solutions is maintained, where each solution is represented as a genome — a sequence of values encoding the parameters of interest.
 		The algorithm proceeds iteratively through the following steps:
 		
@@ -223,7 +237,7 @@
 	
 	\section{Our Proposed Approach}
 	
-	The discussion above shows that classical approaches such as automatic planning or reinforcement learning are unable to scale to the requirements of our motivating problem. To address this, we propose a hybrid heuristic method which combines symbolic reasoning with evolutionary optimization.
+	The discussion in the section~\ref{section::existing-approaches} shows that classical approaches such as automatic planning or reinforcement learning are unable to scale to the requirements of our motivating problem. To address this, we propose a hybrid heuristic method which combines symbolic reasoning with evolutionary optimization.
 	
 	The core idea is to replace direct search over complete action sequences with search over a smaller set of latent behavioral parameters, which we call inclinations. These inclinations represent tendencies toward particular groups of actions. A fuzzy controller then maps the inclinations together with the current state into a concrete choice of action.
 	
@@ -265,7 +279,7 @@
 
 	\section{Comparative assessment}
 
-To summarize the discussion above, in the Table~\ref{table::comparison} we compare the two obvious alternatives with the hybrid fuzzy-genetic approach proposed in this work.
+To summarize the discussion, in the Table~\ref{table::comparison} we compare the two obvious alternatives with the hybrid fuzzy-genetic approach proposed in this work.
 
 \begin{table}[H]
 	\label{table::comparison}
@@ -304,8 +318,7 @@ This comparison highlights why classical planners and reinforcement learning app
 	
 	\chapter{Formal problem statement}\label{problem-statement}
 
-	As follows from the section~\ref{introduction:assessment}, formally we have a choice of whether to treat this as a planning problem or a control problem.
-	Despite Reinforcement learning not being fit for our cause, we will still approach our origin problem as a control problem, as it allows us to formally introduce our solution approach later in the chapter~\ref{section::solution}.
+	We will approach our origin problem as a control problem, as it allows us to formally introduce our solution approach later in the chapter~\ref{section::solution}.
 
 	\section{Actor behavior as a control problem}
 
@@ -450,7 +463,7 @@ This parametrization constrains the space of possible behaviors, making the opti
 	with the vector of inclinations $\mathbf{I}$ as a chromosome (every inclination value being a separate gene).
 	
 	\section{Hypothesis}
-	The hypothesis explored in this work is that the combination of assumptions described above constructs an heuristic which allows finding a locally optimal solution for the problem defined in chapter~\ref{problem-statement} in a polynomial time.
+	The hypothesis explored in this work is that the combination of assumptions described in this chapter constructs an heuristic which allows finding a locally optimal solution for the problem defined in chapter~\ref{problem-statement} in a polynomial time.
 	
 	\section{Objectives}\label{section::objectives}
 	
@@ -1592,6 +1605,17 @@ In short: we pay in design effort, but in return we get a tractable solver that 
 
 	\appendix
 	
+	\chapter{Princess Maker 2 reference screen captures}
+	\label{appendix::screenshots}
+	
+	In the following screen capture is presented a character screen from the Princess Maker 2 game, demonstrating the variety of numeric characteristics we model here in this work.
+	
+	\includegraphics*[width=\textwidth, keepaspectratio=true]{code/pm2_attributes.png}
+	
+	In the following screen capture is presented a schedule planning screen from the Princess Maker 2 game, demonstrating the variety of actions we model here in this work.
+	
+	\includegraphics*[width=\textwidth, keepaspectratio=true]{code/pm2_actions.png}
+		
 	\chapter{Baseline case fuzzy controller}\label{appendix::baseline-case-fuzzy-controller}
 	
 	\lstinputlisting[language=yaml]{code/Baseline.fll}
