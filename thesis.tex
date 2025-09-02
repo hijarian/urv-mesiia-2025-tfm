@@ -1534,80 +1534,6 @@ rule: if InclinationHousekeeping is high then MannersClass is low
 	
 	\chapter{Conclusions and Future Work}\label{section::conclusions}
 
-
-	% BEGIN SUGGESTION
-	
-	To sum it up, the main result of this work is that the hybrid fuzzy–genetic solver is able to function as intended (instead of: “actually works”). It produces action sequences with fitness 0, meaning they fully satisfy the goal predicate. That was the critical test of whether the idea is viable at all, and we passed it.
-	
-	Performance-wise, the solver depends linearly on the planning horizon 
-	𝑇
-	T. For example, running 
-	𝑇
-	=
-	1200
-	T=1200 steps on a standard home PC took 12 minutes. For modern computing this is effectively instantaneous, and it completely sidesteps the combinatorial explosion of classical approaches. The runtime instead depends mostly on how complex the fitness function is and, to a lesser extent, how the fuzzy controller is written.
-	
-	Along the way, we found several structural properties:
-	
-	- The fuzzy controller, while useful for encoding domain knowledge, is a complicated object on its own. Configuring it is already a nontrivial problem.
-	
-	- The convergence speed of the genetic algorithm is governed by the cost of evaluating the fitness function, not by the size of the action space.
-	
-	All objectives defined in Section 3.3 have been met: we formalized the problem, implemented a solver, tested it on different scales, and analyzed the results.
-	
-	A useful comparison is with reinforcement learning. In our case, if we try to set up a tabular RL agent with 23 attributes ranging up to 500 and 27 actions, the Q-table would be 
-	27
-	×
-	500
-	23
-	27×500
-	23
-	, which is clearly infeasible (instead of: “obviously impossible”) to store or explore. Even with function approximation, RL still faces the horizon problem: with 
-	𝛾
-	=
-	0.99
-	γ=0.99 and 
-	𝑇
-	=
-	1200
-	T=1200, the learning signal from the final reward is around 
-	6
-	×
-	10
-	−
-	6
-	6×10
-	−6
-	, practically zero. Raising 
-	𝛾
-	γ makes the effective horizon too long and increases sample complexity. Our method avoids this by using the known deterministic model to directly simulate trajectories, and by searching in the much smaller space of inclinations 
-	𝑞
-	≪
-	𝑛
-	q≪n. The trade-off is that we have to supply a fuzzy rule base by hand. In short (instead of: “In other words”): we pay in design effort, but in return we get a tractable solver that actually reaches the goal.
-	
-	There are limitations. The model used here is a simplification of the full Princess Maker 2 game, and the solver is sensitive to how the fuzzy rules are written. The fuzzy controller should not be seen as a simplification tool but rather as a way to make unsolvable problems solvable at all.
-	
-	As for future work, there are several directions that go beyond this thesis:
-	
-	1. Study the behavior of the solver when the number of attributes 
-	𝑛
-	n and actions 
-	𝑚
-	m increase.
-	
-	2. Extend the solver to non-deterministic environments. The fuzzy part will still work, but decoding the final plan from inclinations will be harder.
-	
-	3. Benchmark against existing planners and RL–EA hybrids to see where this method fits in the larger ecosystem.
-	
-	4. Automate the fuzzy rule generation with clustering or learning, to reduce the manual workload.
-	
-	5. Try other hybridizations, such as RL-assisted evolutionary search or temporal-logic–based planners with domain knowledge.
-	
-	The final takeaway is that the fuzzy–genetic solver is a proof of concept. It shows that dimensionality reduction and symbolic reasoning can turn an intractable problem into something we can actually solve. The Princess Maker 2 example was just a testbed. The method itself applies to any large-horizon deterministic planning problem, and pushing this further would be a natural path for doctoral-level research.
-	
-	% END SUGGESTION
-
 	To sum it up, we achieved the following results:
 	
 	\begin{enumerate}
@@ -1617,9 +1543,13 @@ rule: if InclinationHousekeeping is high then MannersClass is low
 		\item it has been determined that the speed of convergence is actually dependent on the complexity of the fitness function calculation;
 	\end{enumerate}
 	
+	All objectives defined in Section~\ref{section::objectives} have been met: we formalized the problem, implemented a solver, tested it on different scales, and analyzed the results.
+		
 	The codebase of the reference solver is located at the GitHub repository in the Internet accessible by the URL \url{https://github.com/hijarian/urv-mesiia-2025-tfm-code}.
 	
-	With this, our objectives stated in the section~\ref{section::objectives} has been reached and we can give a brief summary on the further research spanning outside the scope of this particular work.
+	With this, all objectives defined in section~\ref{section::objectives} have been met: we formalized the problem, implemented a solver, tested it on different scales, and analyzed the results.
+	
+	We can give now a brief summary on the further research spanning outside the scope of this particular work.
 	
 	A game so mechanically interdependent as \textit{Princess Maker 2} is too complex to solve using such a straightforward model.
 	A lot of simplifications were needed to arrive at a coherent model of the deterministic planning problem with a stateful agent.
@@ -1630,16 +1560,26 @@ rule: if InclinationHousekeeping is high then MannersClass is low
 	Computing $T=1200$ steps in 12 minutes is effectively instantaneous nowadays so there's a little benefit in a further research of the computational complexity \textit{in relation to $T$}.
 	However, a research on how the computational complexity of this solver depends on amount of attributes $n$~(\ref{definitions:attributes-amount}) and amount of actions $m$~(\ref{definitions:actions-amount}) is still needed to be done.
 
+
+A useful comparison is with reinforcement learning. 
+In our case, if we try to set up a tabular RL agent with $23$ attributes ranging up to $500$ and $27$ actions, the Q-table would be $27 \times 500^{23}$, which is clearly infeasible to store or explore.
+Even with function approximation, RL still faces the horizon problem: with $\gamma = 0.99$ and $T = 1200$, the learning signal from the final reward is around $6 \times 10^{-6}$, practically zero.
+Raising $\gamma$ makes the effective horizon too long and increases sample complexity.
+Our method avoids this by using the known deterministic model to directly simulate trajectories, and by searching in the much smaller space of inclinations $q \llless n$. 
+The trade-off is that we have to supply a fuzzy rule base by hand.
+In short: we pay in design effort, but in return we get a tractable solver that actually reaches the goal.
+
 	In the span of this work, only two cases distinct in the number of actions $m$ were explored, and the more thorough exploration of the parameter space is left for a dissertation-level research.
 	
 	An additional path of exploration is researching how well this method can be applied to problems where the effects of actions are non-deterministic.
 	While lifting the restriction of determinism does not affect the fuzzy inference at all, it presents challenges in decoding the solution sequence of actions from the vector of inclination values.
 	
-	Now, first, let us make a conclusion tangential to the origin problem but related to the chosen theoretical toolset.
 	While the fuzzy controller can indeed be seen as a tool to formalize the decision making using the expert knowledge in the given domain, it is too complicated mechanism \textit{by itself} to help reducing the complexity of the problem it's solving.
 	One should treat it not as a tool which helps make complicated problems simpler but which, hopefully, makes unsolvable ones solvable at all, as proper configuration of the fuzzy controller is already a problem in itself.
+	
+	One of the possible areas to explore is automation of the fuzzy rule base generation with clustering or learning, to reduce the manual workload.
 
-	Second, the proof-of-concept solver implemented and discussed in this work is obviously an instance of an automated planner, for which an extensive framework of both machinery and benchmarking exists.
+	The proof-of-concept solver implemented and discussed in this work is obviously an instance of an automated planner, for which an extensive framework of both machinery and benchmarking exists.
 	The logical next step would be to determine a correct place of this method in the existing body of knowledge about the automated planners and perform formal comparisons of performance with some other state-of-the-art methods.
 
 	Another work which exploits the idea of using the domain knowledge in the solution process exists, but it uses the Linear Temporal Logic instead, and utilizes the existing PDDL automatic planning machinery~\cite{LU2025121666}.
