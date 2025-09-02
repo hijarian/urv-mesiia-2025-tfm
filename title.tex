@@ -6,11 +6,8 @@
 	%	Headings
 	%------------------------------------------------
 	
-	\textsc{\LARGE Universitat Rovira i Virgili}\\[1.5cm]
-	
-	\textsc{\Large \deliverableName}\\[0.5cm]
-	
-	\textsc{\large Masters of Artificial Intelligence and Computer Security}\\[0.5cm]
+	{\Large\sc\@author}\\[1.5cm] % Your name
+
 	
 	%------------------------------------------------
 	%	Title
@@ -21,6 +18,8 @@
 	{\huge\bfseries \@title}\\[0.4cm]
 	
 	\HRule\\[1.5cm]
+
+	\textsc{\Large \deliverableName}\\[1.5cm]
 	
 	%------------------------------------------------
 	%	Author(s)
@@ -28,33 +27,29 @@
 	
 	% 	If you don't want a supervisor, uncomment the two lines below and comment the code above
 	%	{\large\textit{Author}}\\
-	{\large\sc\@author} % Your name
-	
-	%------------------------------------------------
-	%	Date
-	%------------------------------------------------
+
+	\textsc{\large directed by \directedBy}\\[0.5cm]
+		
+	\textsc{\large Masters of Artificial Intelligence and Computer Security}\\[0.5cm]
 	
 	\vfill\vfill
-	{\large\@date} % Date, change the \today to a set date if you want to be precise
-	\vfill\vfill\vfill
 	
-	%   \footnotesize{Comments: \comments}
-	%   \vfill\vfill
-	%    \homepage
-	%    \vfill
-	
-	%------------------------------------------------
-	% Change log for the plan (can be deleted before delivery)
-	% When you update the plan please record what you changed and what the reason for the change. This will be useful for your supervisor.
-	%------------------------------------------------
-	% \input{./changelog.tex}
 	
 	%------------------------------------------------
 	%	Logo
 	%------------------------------------------------
 	\vfill
 	\includegraphics[width=0.3\textwidth]{./urvlogo.png}
+	
+	%\vfill
+	
+	%\textsc{\LARGE Universitat Rovira i Virgili}\\[0.5cm]
+	
 	\vfill
+	
+	{\large Tarragona}\\
+	
+	{\large\@date} % Date, change the \today to a set date if you want to be precise
 	
 	
 \end{titlepage}
